@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IdeaCanvas — доска идей</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="theme-dark">
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="screen active">
+  <div class="dash-header">
+    <div class="logo">⬡ IdeaCanvas</div>
+    <div class="dash-actions">
+      <button class="btn-icon" id="toggleThemeBtn" title="Сменить тему">◑</button>
+    </div>
+  </div>
+  <div class="dash-body">
+    <div class="dash-top">
+      <h1>Мои доски</h1>
+      <button class="btn-primary" id="newBoardBtn">+ Новая доска</button>
+    </div>
+    <div class="dash-search-wrap">
+      <input type="text" id="dashSearch" placeholder="Поиск по доскам..." class="dash-search" />
+    </div>
+    <div id="boardsGrid" class="boards-grid"></div>
+    <div id="noBoardsMsg" class="no-boards">
+      <div class="no-boards-icon">⬡</div>
+      <p>Нет досок. Создайте первую!</p>
+    </div>
+  </div>
+</div>
+
+<!-- CANVAS SCREEN -->
+<div id="canvasScreen" class="screen">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <button class="btn-icon" id="backBtn" title="На главную">←</button>
+    <div class="board-title-wrap">
+      <span id="boardTitleDisplay" class="board-title" contenteditable="true" spellcheck="false">Без названия</span>
+    </div>
+    <div class="topbar-center">
+      <div class="zoom-controls">
+        <button class="btn-icon" id="zoomOutBtn" title="Уменьшить (-)">−</button>
+        <span id="zoomDisplay" class="zoom-display">100%</span>
+        <button class="btn-icon" id="zoomInBtn" title="Увеличить (+)">+</button>
+        <button class="btn-sm" id="zoomFitBtn" title="По размеру (F)">По размеру</button>
+        <button class="btn-sm" id="zoom100Btn" title="100% (0)">100%</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn-icon" id="searchBtn" title="Поиск (Ctrl+F)">⌕</button>
+      <button class="btn-icon" id="presentBtn" title="Презентация (P)">▶</button>
+      <button class="btn-icon" id="exportBtn" title="Экспорт">⤓</button>
+      <button class="btn-icon" id="undoBtn" title="Отменить (Ctrl+Z)">↩</button>
+      <button class="btn-icon" id="redoBtn" title="Вернуть (Ctrl+Y)">↪</button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar" id="toolbar">
+    <button class="tool-btn active" data-tool="select" title="Выбор (V)">
+      <svg viewBox="0 0 24 24"><path d="M4 2l16 10-7 1-4 7z"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="hand" title="Рука / Перемещение (H)">
+      <svg viewBox="0 0 24 24"><path d="M9 3a1 1 0 0 1 1 1v5a1 1 0 0 0 2 0V5a1 1 0 0 1 2 0v4a1 1 0 0 0 2 0V8a1 1 0 0 1 2 0v5c0 3.3-2.7 6-6 6H9a6 6 0 0 1-6-6V7a1 1 0 0 1 2 0v3a1 1 0 0 0 2 0V4a1 1 0 0 1 1-1z"/></svg>
+    </button>
+    <div class="tool-divider"></div>
+    <button class="tool-btn" data-tool="sticky" title="Стикер (S)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="card" title="Задача / Карточка (C)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="14" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="text" title="Текст (T)">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M12 6v13M8 19h8"/></svg>
+    </button>
+    <div class="tool-divider"></div>
+    <button class="tool-btn" data-tool="rect" title="Прямоугольник (R)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="circle" title="Эллипс (E)">
+      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="7" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="diamond" title="Ромб (D)">
+      <svg viewBox="0 0 24 24"><polygon points="12,3 21,12 12,21 3,12" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+    <div class="tool-divider"></div>
+    <button class="tool-btn" data-tool="connect" title="Связь / Стрелка (A)">
+      <svg viewBox="0 0 24 24"><line x1="5" y1="19" x2="19" y2="5" stroke="currentColor" stroke-width="2"/><polyline points="10,5 19,5 19,14" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+    </button>
+    <button class="tool-btn" data-tool="frame" title="Фрейм (F)">
+      <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 2"/></svg>
+    </button>
+  </div>
+
+  <!-- CANVAS CONTAINER -->
+  <div id="canvasContainer" class="canvas-container">
+    <div id="canvasWorld" class="canvas-world">
+      <!-- nodes inserted here -->
+      <svg id="connectionsSvg" class="connections-svg"></svg>
+    </div>
+    <!-- box select overlay -->
+    <div id="boxSelect" class="box-select"></div>
+  </div>
+
+  <!-- MINIMAP -->
+  <div class="minimap-wrap">
+    <canvas id="minimap" width="160" height="100"></canvas>
+  </div>
+
+  <!-- PROPERTIES PANEL -->
+  <div id="propsPanel" class="props-panel hidden">
+    <div class="props-header">
+      <span id="propsTitle">Свойства</span>
+      <button class="btn-icon" id="closePropsPanelBtn">×</button>
+    </div>
+    <div id="propsBody" class="props-body"></div>
+  </div>
+
+  <!-- SEARCH PANEL -->
+  <div id="searchPanel" class="search-panel hidden">
+    <input type="text" id="searchInput" placeholder="Поиск по канвасу..." class="search-input" />
+    <div id="searchResults" class="search-results"></div>
+  </div>
+
+  <!-- COMMAND PALETTE -->
+  <div id="cmdPalette" class="cmd-palette hidden">
+    <input type="text" id="cmdInput" placeholder="Команда или поиск... (⌘K)" class="cmd-input" />
+    <div id="cmdList" class="cmd-list"></div>
+  </div>
+
+  <!-- CONTEXT MENU -->
+  <div id="contextMenu" class="context-menu hidden"></div>
+
+  <!-- EXPORT MODAL -->
+  <div id="exportModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>Экспорт</span>
+        <button class="btn-icon" id="closeExportBtn">×</button>
+      </div>
+      <div class="modal-body">
+        <button class="btn-secondary full-width" id="exportJsonBtn">⬇ Скачать JSON (полный)</button>
+        <button class="btn-secondary full-width" id="exportPngBtn">⬇ Скачать PNG</button>
+        <button class="btn-secondary full-width" id="exportMdBtn">⬇ Скачать Markdown</button>
+        <div class="import-section">
+          <label class="btn-secondary full-width import-label">
+            ⬆ Импортировать JSON
+            <input type="file" id="importJsonInput" accept=".json" style="display:none" />
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESENTATION MODE OVERLAY -->
+  <div id="presentMode" class="present-mode hidden">
+    <div class="present-toolbar">
+      <button id="prevFrameBtn">← Назад</button>
+      <span id="presentCounter">1 / 1</span>
+      <button id="nextFrameBtn">Далее →</button>
+      <button id="exitPresentBtn">✕ Выход</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- COLOR PICKER POPUP -->
+<div id="colorPicker" class="color-picker hidden">
+  <div class="color-swatches"></div>
+</div>
+
+<!-- NODE CREATION MENU (on double click) -->
+<div id="nodeMenu" class="node-menu hidden">
+  <button data-type="sticky">📝 Стикер</button>
+  <button data-type="card">✅ Задача</button>
+  <button data-type="text">T Текст</button>
+  <button data-type="rect">▭ Прямоугольник</button>
+  <button data-type="circle">◯ Эллипс</button>
+  <button data-type="diamond">◇ Ромб</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

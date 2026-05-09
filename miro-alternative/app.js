@@ -1,0 +1,1925 @@
+/* ================================================================
+   IdeaCanvas — полная логика приложения
+   ================================================================ */
+
+// ======================== STATE ========================
+const STATE = {
+  boards: [],        // [{id, name, createdAt, nodes, connections, camera}]
+  currentBoard: null,
+  nodes: [],
+  connections: [],
+  camera: { x: 0, y: 0, zoom: 1 },
+  selected: [],      // array of node ids
+  tool: 'select',
+  history: [],
+  future: [],
+  dragging: null,    // {nodeIds, startX, startY, origPositions}
+  resizing: null,    // {nodeId, startX, startY, origW, origH}
+  panning: null,     // {startX, startY, origCamX, origCamY}
+  connecting: null,  // {fromId, fromSide, tempLine}
+  boxSelect: null,   // {startX, startY}
+  theme: 'dark',
+  presentFrames: [],
+  presentIndex: 0,
+};
+
+// ======================== COLORS ========================
+const STICKY_COLORS = ['#f5c842','#ff7eb3','#7ec8e3','#b5e7a0','#ffb347','#c3b1e1','#ff9f9f','#90e0d4'];
+const SHAPE_COLORS = ['#7c6af5','#4caf8e','#f5c842','#f56c6c','#f5a442','#7ec8e3','#b5e7a0','#c3b1e1'];
+const STATUS_COLORS = { todo: '#6666aa', doing: '#f5a442', done: '#4caf8e', blocked: '#f56c6c' };
+const STATUS_NAMES  = { todo: 'К выполнению', doing: 'В работе', done: 'Готово', blocked: 'Заблокировано' };
+
+// ======================== DOM REFS ========================
+const $ = id => document.getElementById(id);
+const dashboard     = $('dashboard');
+const canvasScreen  = $('canvasScreen');
+const canvasContainer = $('canvasContainer');
+const canvasWorld   = $('canvasWorld');
+const connSvg       = $('connectionsSvg');
+const boardsGrid    = $('boardsGrid');
+const noBoardsMsg   = $('noBoardsMsg');
+const zoomDisplay   = $('zoomDisplay');
+const propsPanel    = $('propsPanel');
+const propsBody     = $('propsBody');
+const searchPanel   = $('searchPanel');
+const searchInput   = $('searchInput');
+const searchResults = $('searchResults');
+const cmdPalette    = $('cmdPalette');
+const cmdInput      = $('cmdInput');
+const cmdList       = $('cmdList');
+const contextMenu   = $('contextMenu');
+const exportModal   = $('exportModal');
+const presentMode   = $('presentMode');
+const minimap       = $('minimap');
+const nodeMenu      = $('nodeMenu');
+const boxSelectEl   = $('boxSelect');
+
+// ======================== HELPERS ========================
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+function screenToWorld(sx, sy) {
+  const rect = canvasContainer.getBoundingClientRect();
+  return {
+    x: (sx - rect.left - STATE.camera.x) / STATE.camera.zoom,
+    y: (sy - rect.top  - STATE.camera.y) / STATE.camera.zoom,
+  };
+}
+function worldToScreen(wx, wy) {
+  return {
+    x: wx * STATE.camera.zoom + STATE.camera.x,
+    y: wy * STATE.camera.zoom + STATE.camera.y,
+  };
+}
+
+// ======================== STORAGE ========================
+function saveBoards() {
+  // sync current board data
+  if (STATE.currentBoard) {
+    const b = STATE.boards.find(b => b.id === STATE.currentBoard);
+    if (b) {
+      b.nodes = deepClone(STATE.nodes);
+      b.connections = deepClone(STATE.connections);
+      b.camera = deepClone(STATE.camera);
+      b.name = $('boardTitleDisplay').textContent.trim() || 'Без названия';
+    }
+  }
+  try { localStorage.setItem('ideacanvas_boards', JSON.stringify(STATE.boards)); } catch(e) {}
+}
+
+function loadBoards() {
+  try {
+    const data = localStorage.getItem('ideacanvas_boards');
+    if (data) STATE.boards = JSON.parse(data);
+  } catch(e) { STATE.boards = []; }
+}
+
+// ======================== HISTORY ========================
+function pushHistory() {
+  STATE.history.push({ nodes: deepClone(STATE.nodes), connections: deepClone(STATE.connections) });
+  if (STATE.history.length > 80) STATE.history.shift();
+  STATE.future = [];
+}
+
+function undo() {
+  if (!STATE.history.length) return;
+  STATE.future.push({ nodes: deepClone(STATE.nodes), connections: deepClone(STATE.connections) });
+  const snap = STATE.history.pop();
+  STATE.nodes = snap.nodes;
+  STATE.connections = snap.connections;
+  STATE.selected = [];
+  renderAll();
+}
+
+function redo() {
+  if (!STATE.future.length) return;
+  STATE.history.push({ nodes: deepClone(STATE.nodes), connections: deepClone(STATE.connections) });
+  const snap = STATE.future.pop();
+  STATE.nodes = snap.nodes;
+  STATE.connections = snap.connections;
+  STATE.selected = [];
+  renderAll();
+}
+
+// ======================== ZOOM ========================
+const MIN_ZOOM = 0.03;   // 3%
+const MAX_ZOOM = 20;     // 2000%
+const ZOOM_STEP = 0.12;
+
+function setZoom(newZoom, focusX, focusY) {
+  const ctr = canvasContainer.getBoundingClientRect();
+  const cx = focusX !== undefined ? focusX : ctr.left + ctr.width / 2;
+  const cy = focusY !== undefined ? focusY : ctr.top + ctr.height / 2;
+
+  const oldZoom = STATE.camera.zoom;
+  newZoom = clamp(newZoom, MIN_ZOOM, MAX_ZOOM);
+
+  // Keep the point under cursor fixed
+  STATE.camera.x = cx - (cx - STATE.camera.x) * (newZoom / oldZoom);
+  STATE.camera.y = cy - (cy - STATE.camera.y) * (newZoom / oldZoom);
+  STATE.camera.zoom = newZoom;
+
+  applyCamera();
+  updateZoomDisplay();
+  drawMinimap();
+}
+
+function applyCamera() {
+  canvasWorld.style.transform = `translate(${STATE.camera.x}px, ${STATE.camera.y}px) scale(${STATE.camera.zoom})`;
+}
+
+function updateZoomDisplay() {
+  zoomDisplay.textContent = Math.round(STATE.camera.zoom * 100) + '%';
+}
+
+function zoomToFit() {
+  if (!STATE.nodes.length) { setZoom(1); centerCamera(); return; }
+  const bounds = getNodesBounds(STATE.nodes);
+  const ctr = canvasContainer.getBoundingClientRect();
+  const pad = 80;
+  const scaleX = (ctr.width - pad * 2) / bounds.width;
+  const scaleY = (ctr.height - pad * 2) / bounds.height;
+  const zoom = clamp(Math.min(scaleX, scaleY), MIN_ZOOM, MAX_ZOOM);
+  STATE.camera.zoom = zoom;
+  STATE.camera.x = (ctr.width - bounds.width * zoom) / 2 - bounds.x * zoom;
+  STATE.camera.y = (ctr.height - bounds.height * zoom) / 2 - bounds.y * zoom;
+  applyCamera();
+  updateZoomDisplay();
+  drawMinimap();
+}
+
+function centerCamera() {
+  const ctr = canvasContainer.getBoundingClientRect();
+  STATE.camera.x = ctr.width / 2;
+  STATE.camera.y = ctr.height / 2;
+  applyCamera();
+}
+
+function getNodesBounds(nodes) {
+  if (!nodes.length) return { x: 0, y: 0, width: 1, height: 1 };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + (n.w || 200));
+    maxY = Math.max(maxY, n.y + (n.h || 120));
+  });
+  return { x: minX, y: minY, width: maxX - minX || 1, height: maxY - minY || 1 };
+}
+
+// ======================== NODE CREATION ========================
+function createNode(type, wx, wy, extra = {}) {
+  const defaults = {
+    sticky: { w: 180, h: 140, color: STICKY_COLORS[Math.floor(Math.random()*STICKY_COLORS.length)], text: '' },
+    card:   { w: 220, h: 150, color: '#7c6af5', status: 'todo', title: '', desc: '', tags: [], due: '' },
+    text:   { w: 200, h: 60,  color: '', text: '' },
+    rect:   { w: 160, h: 100, color: SHAPE_COLORS[0], fill: 'rgba(124,106,245,0.15)' },
+    circle: { w: 120, h: 80,  color: SHAPE_COLORS[1], fill: 'rgba(76,175,142,0.15)' },
+    diamond:{ w: 140, h: 100, color: SHAPE_COLORS[3], fill: 'rgba(245,108,108,0.15)' },
+    frame:  { w: 400, h: 280, label: 'Фрейм' },
+  };
+  const node = {
+    id: uid(),
+    type,
+    x: wx - (defaults[type].w || 160) / 2,
+    y: wy - (defaults[type].h || 100) / 2,
+    ...defaults[type],
+    ...extra,
+  };
+  STATE.nodes.push(node);
+  renderNode(node);
+  renderConnections();
+  drawMinimap();
+  saveBoards();
+  return node;
+}
+
+// ======================== NODE RENDERING ========================
+function renderAll() {
+  // Remove all existing node els
+  Array.from(canvasWorld.querySelectorAll('.node')).forEach(el => el.remove());
+  STATE.nodes.forEach(n => renderNode(n));
+  renderConnections();
+  drawMinimap();
+}
+
+function renderNode(node) {
+  // Remove existing
+  const existing = document.getElementById('node-' + node.id);
+  if (existing) existing.remove();
+
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  wrap.id = 'node-' + node.id;
+  wrap.style.cssText = `left:${node.x}px;top:${node.y}px;width:${node.w}px;height:${node.h}px;`;
+  if (node.type === 'frame') wrap.style.zIndex = 0;
+  if (STATE.selected.includes(node.id)) wrap.classList.add('selected');
+
+  // Inner
+  let inner;
+  switch (node.type) {
+    case 'sticky':  inner = renderSticky(node); break;
+    case 'card':    inner = renderCard(node); break;
+    case 'text':    inner = renderText(node); break;
+    case 'rect':    inner = renderShape(node, 'rect'); break;
+    case 'circle':  inner = renderShape(node, 'circle'); break;
+    case 'diamond': inner = renderShape(node, 'diamond'); break;
+    case 'frame':   inner = renderFrame(node); break;
+    default:        inner = document.createElement('div');
+  }
+  wrap.appendChild(inner);
+
+  // Resize handle
+  if (node.type !== 'frame') {
+    const rh = document.createElement('div');
+    rh.className = 'node-resize-handle';
+    wrap.appendChild(rh);
+    rh.addEventListener('mousedown', e => startResize(e, node.id));
+  }
+
+  // Connection dots (except frame)
+  if (node.type !== 'frame') {
+    ['top','right','bottom','left'].forEach(side => {
+      const dot = document.createElement('div');
+      dot.className = 'conn-dot ' + side;
+      dot.addEventListener('mousedown', e => { e.stopPropagation(); startConnect(e, node.id, side); });
+      wrap.appendChild(dot);
+    });
+  }
+
+  // Events
+  wrap.addEventListener('mousedown', e => onNodeMouseDown(e, node.id));
+  wrap.addEventListener('dblclick', e => onNodeDblClick(e, node.id));
+  wrap.addEventListener('contextmenu', e => onNodeContextMenu(e, node.id));
+
+  // Insert before SVG overlay
+  canvasWorld.insertBefore(wrap, connSvg);
+}
+
+function renderSticky(node) {
+  const inner = document.createElement('div');
+  inner.className = 'node-inner sticky-inner';
+  inner.style.background = node.color;
+  inner.style.color = isLight(node.color) ? '#1a1a1a' : '#f0f0f0';
+  inner.contentEditable = 'false';
+  inner.innerHTML = node.text ? simpleMarkdown(node.text) : '';
+  if (!node.text) inner.setAttribute('data-placeholder', 'Двойной клик для редактирования...');
+  inner.addEventListener('input', () => { node.text = inner.innerText; saveBoards(); });
+  return inner;
+}
+
+function renderCard(node) {
+  const inner = document.createElement('div');
+  inner.className = 'node-inner card-inner';
+
+  const bar = document.createElement('div');
+  bar.className = 'card-status-bar';
+  bar.style.background = STATUS_COLORS[node.status] || STATUS_COLORS.todo;
+  inner.appendChild(bar);
+
+  const title = document.createElement('div');
+  title.className = 'card-title';
+  title.contentEditable = 'false';
+  title.setAttribute('data-placeholder', 'Название задачи');
+  title.textContent = node.title;
+  title.addEventListener('input', () => { node.title = title.textContent; saveBoards(); });
+  inner.appendChild(title);
+
+  const desc = document.createElement('div');
+  desc.className = 'card-desc';
+  desc.contentEditable = 'false';
+  desc.setAttribute('data-placeholder', 'Описание...');
+  desc.textContent = node.desc;
+  desc.addEventListener('input', () => { node.desc = desc.textContent; saveBoards(); });
+  inner.appendChild(desc);
+
+  const footer = document.createElement('div');
+  footer.className = 'card-footer';
+
+  const badge = document.createElement('span');
+  badge.className = `card-status-badge status-${node.status}`;
+  badge.textContent = STATUS_NAMES[node.status];
+  badge.addEventListener('click', e => { e.stopPropagation(); cycleStatus(node); });
+  footer.appendChild(badge);
+
+  (node.tags || []).forEach(tag => {
+    const t = document.createElement('span');
+    t.className = 'card-tag';
+    t.textContent = '#' + tag;
+    footer.appendChild(t);
+  });
+
+  if (node.due) {
+    const due = document.createElement('span');
+    due.className = 'card-due';
+    due.textContent = '📅 ' + node.due;
+    footer.appendChild(due);
+  }
+
+  inner.appendChild(footer);
+  return inner;
+}
+
+function renderText(node) {
+  const inner = document.createElement('div');
+  inner.className = 'node-inner text-inner';
+  inner.contentEditable = 'false';
+  inner.innerHTML = node.text ? simpleMarkdown(node.text) : '';
+  if (!node.text) inner.setAttribute('data-placeholder', 'Текст (Markdown)...');
+  inner.style.minWidth = node.w + 'px';
+  inner.addEventListener('input', () => { node.text = inner.innerText; saveBoards(); });
+  return inner;
+}
+
+function renderShape(node, type) {
+  const inner = document.createElement('div');
+  inner.className = 'node-inner shape-inner';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${node.w} ${node.h}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+
+  let shape;
+  if (type === 'rect') {
+    shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    shape.setAttribute('x', '2'); shape.setAttribute('y', '2');
+    shape.setAttribute('width', node.w - 4); shape.setAttribute('height', node.h - 4);
+    shape.setAttribute('rx', '8');
+  } else if (type === 'circle') {
+    shape = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    shape.setAttribute('cx', node.w / 2); shape.setAttribute('cy', node.h / 2);
+    shape.setAttribute('rx', node.w / 2 - 2); shape.setAttribute('ry', node.h / 2 - 2);
+  } else if (type === 'diamond') {
+    shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const cx = node.w / 2, cy = node.h / 2;
+    shape.setAttribute('points', `${cx},2 ${node.w-2},${cy} ${cx},${node.h-2} 2,${cy}`);
+  }
+
+  shape.setAttribute('fill', node.fill || 'rgba(124,106,245,0.15)');
+  shape.setAttribute('stroke', node.color || '#7c6af5');
+  shape.setAttribute('stroke-width', '2');
+  svg.appendChild(shape);
+  inner.appendChild(svg);
+  return inner;
+}
+
+function renderFrame(node) {
+  const inner = document.createElement('div');
+  inner.className = 'node-inner frame-inner';
+  inner.style.width = node.w + 'px';
+  inner.style.height = node.h + 'px';
+
+  const label = document.createElement('div');
+  label.className = 'frame-label';
+  label.contentEditable = 'false';
+  label.textContent = node.label || 'Фрейм';
+  label.addEventListener('input', () => { node.label = label.textContent; saveBoards(); });
+  inner.appendChild(label);
+
+  // Resize for frames
+  const rh = document.createElement('div');
+  rh.className = 'node-resize-handle';
+  rh.addEventListener('mousedown', e => startResize(e, node.id));
+  inner.appendChild(rh);
+
+  return inner;
+}
+
+function updateNodeEl(node) {
+  const el = document.getElementById('node-' + node.id);
+  if (!el) return;
+  el.style.left = node.x + 'px';
+  el.style.top  = node.y + 'px';
+  el.style.width  = node.w + 'px';
+  el.style.height = node.h + 'px';
+  if (STATE.selected.includes(node.id)) el.classList.add('selected');
+  else el.classList.remove('selected');
+}
+
+// ======================== CONNECTIONS ========================
+function renderConnections() {
+  // Clear old paths
+  Array.from(connSvg.querySelectorAll('.conn-group')).forEach(el => el.remove());
+
+  STATE.connections.forEach(conn => {
+    const from = STATE.nodes.find(n => n.id === conn.fromId);
+    const to   = STATE.nodes.find(n => n.id === conn.toId);
+    if (!from || !to) return;
+
+    const fp = getSidePoint(from, conn.fromSide);
+    const tp = getSidePoint(to,   conn.toSide || 'top');
+
+    const dx = tp.x - fp.x, dy = tp.y - fp.y;
+    const mx = fp.x + dx * 0.5, my = fp.y + dy * 0.5;
+    let d;
+    if (conn.fromSide === 'right' || conn.fromSide === 'left') {
+      d = `M${fp.x},${fp.y} C${mx},${fp.y} ${mx},${tp.y} ${tp.x},${tp.y}`;
+    } else {
+      d = `M${fp.x},${fp.y} C${fp.x},${my} ${tp.x},${my} ${tp.x},${tp.y}`;
+    }
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.className = 'conn-group';
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class', 'conn-path' + (STATE.selected.includes(conn.id) ? ' selected' : ''));
+    path.addEventListener('click', e => { e.stopPropagation(); selectConnection(conn.id); });
+    path.addEventListener('contextmenu', e => onConnContextMenu(e, conn.id));
+    g.appendChild(path);
+
+    // Arrow head
+    const angle = Math.atan2(tp.y - my, tp.x - mx);
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const as = 8;
+    const ax = tp.x, ay = tp.y;
+    arrow.setAttribute('points',
+      `${ax},${ay} ${ax - as * Math.cos(angle - 0.4)},${ay - as * Math.sin(angle - 0.4)} ${ax - as * Math.cos(angle + 0.4)},${ay - as * Math.sin(angle + 0.4)}`
+    );
+    arrow.setAttribute('class', 'conn-arrow');
+    g.appendChild(arrow);
+
+    connSvg.appendChild(g);
+  });
+}
+
+function getSidePoint(node, side) {
+  const cx = node.x + node.w / 2;
+  const cy = node.y + node.h / 2;
+  switch (side) {
+    case 'top':    return { x: cx, y: node.y };
+    case 'bottom': return { x: cx, y: node.y + node.h };
+    case 'left':   return { x: node.x, y: cy };
+    case 'right':  return { x: node.x + node.w, y: cy };
+    default:       return { x: cx, y: cy };
+  }
+}
+
+function selectConnection(id) {
+  STATE.selected = [id];
+  renderConnections();
+  hidePropsPanel();
+}
+
+// ======================== SELECTION ========================
+function selectNode(id, additive = false) {
+  if (additive) {
+    if (STATE.selected.includes(id)) STATE.selected = STATE.selected.filter(s => s !== id);
+    else STATE.selected.push(id);
+  } else {
+    STATE.selected = [id];
+  }
+  updateSelection();
+  showPropsForSelected();
+}
+
+function clearSelection() {
+  STATE.selected = [];
+  updateSelection();
+  hidePropsPanel();
+}
+
+function updateSelection() {
+  STATE.nodes.forEach(n => {
+    const el = document.getElementById('node-' + n.id);
+    if (el) {
+      if (STATE.selected.includes(n.id)) el.classList.add('selected');
+      else el.classList.remove('selected');
+    }
+  });
+  renderConnections();
+}
+
+function selectAll() {
+  STATE.selected = STATE.nodes.map(n => n.id);
+  updateSelection();
+}
+
+// ======================== MOUSE EVENTS ========================
+function onNodeMouseDown(e, id) {
+  if (e.button !== 0) return;
+  if (STATE.tool === 'connect') return;
+  e.stopPropagation();
+
+  const node = STATE.nodes.find(n => n.id === id);
+  if (!node) return;
+
+  // Bring to front (except frames)
+  if (node.type !== 'frame') {
+    const idx = STATE.nodes.indexOf(node);
+    STATE.nodes.splice(idx, 1);
+    STATE.nodes.push(node);
+    const el = document.getElementById('node-' + id);
+    if (el) canvasWorld.appendChild(el);
+  }
+
+  selectNode(id, e.ctrlKey || e.metaKey);
+
+  const startX = e.clientX, startY = e.clientY;
+  const ids = STATE.selected.includes(id) ? [...STATE.selected] : [id];
+  const origPositions = {};
+  ids.forEach(nid => {
+    const n = STATE.nodes.find(x => x.id === nid);
+    if (n) origPositions[nid] = { x: n.x, y: n.y };
+  });
+
+  STATE.dragging = { nodeIds: ids, startX, startY, origPositions, moved: false };
+  pushHistory();
+}
+
+function onNodeDblClick(e, id) {
+  e.stopPropagation();
+  const node = STATE.nodes.find(n => n.id === id);
+  if (!node) return;
+  enableEditing(node);
+}
+
+function onNodeContextMenu(e, id) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!STATE.selected.includes(id)) selectNode(id);
+  showNodeContextMenu(e.clientX, e.clientY);
+}
+
+function onConnContextMenu(e, connId) {
+  e.preventDefault();
+  e.stopPropagation();
+  showConnContextMenu(e.clientX, e.clientY, connId);
+}
+
+function enableEditing(node) {
+  const el = document.getElementById('node-' + node.id);
+  if (!el) return;
+
+  if (node.type === 'sticky' || node.type === 'text') {
+    const inner = el.querySelector('.sticky-inner, .text-inner');
+    if (inner) {
+      inner.contentEditable = 'true';
+      inner.innerHTML = node.text || '';
+      inner.focus();
+      const range = document.createRange();
+      range.selectNodeContents(inner);
+      range.collapse(false);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      inner.addEventListener('blur', () => {
+        node.text = inner.innerText;
+        inner.contentEditable = 'false';
+        if (node.type === 'sticky') inner.innerHTML = simpleMarkdown(node.text);
+        else inner.innerHTML = simpleMarkdown(node.text);
+        saveBoards();
+      }, { once: true });
+    }
+  } else if (node.type === 'card') {
+    const title = el.querySelector('.card-title');
+    const desc  = el.querySelector('.card-desc');
+    if (title) { title.contentEditable = 'true'; title.focus(); }
+    if (desc)  desc.contentEditable = 'true';
+    const stopEdit = () => {
+      if (title) { node.title = title.textContent; title.contentEditable = 'false'; }
+      if (desc)  { node.desc  = desc.textContent;  desc.contentEditable = 'false'; }
+      saveBoards();
+    };
+    title && title.addEventListener('blur', () => setTimeout(stopEdit, 100), { once: true });
+  } else if (node.type === 'frame') {
+    const label = el.querySelector('.frame-label');
+    if (label) { label.contentEditable = 'true'; label.focus(); }
+    label && label.addEventListener('blur', () => { node.label = label.textContent; label.contentEditable = 'false'; saveBoards(); }, { once: true });
+  }
+}
+
+// ======================== DRAG & RESIZE ========================
+canvasContainer.addEventListener('mousedown', e => {
+  if (e.button === 1 || (e.button === 0 && STATE.tool === 'hand') || (e.button === 0 && e.altKey)) {
+    // PAN
+    e.preventDefault();
+    STATE.panning = { startX: e.clientX, startY: e.clientY, origX: STATE.camera.x, origY: STATE.camera.y };
+    canvasContainer.classList.add('panning');
+    return;
+  }
+
+  if (e.button === 0 && STATE.tool === 'select') {
+    // Box select start (if clicking empty)
+    const target = e.target;
+    const onNode = target.closest('.node');
+    if (!onNode) {
+      clearSelection();
+      const rect = canvasContainer.getBoundingClientRect();
+      STATE.boxSelect = { startX: e.clientX - rect.left, startY: e.clientY - rect.top };
+      boxSelectEl.style.cssText = `display:block;left:${STATE.boxSelect.startX}px;top:${STATE.boxSelect.startY}px;width:0;height:0;`;
+    }
+  }
+});
+
+canvasContainer.addEventListener('dblclick', e => {
+  if (e.target !== canvasContainer && !e.target.classList.contains('canvas-world') && !e.target.classList.contains('connections-svg')) return;
+
+  if (STATE.tool === 'select' || STATE.tool === 'hand') {
+    const wp = screenToWorld(e.clientX, e.clientY);
+    showNodeMenu(e.clientX, e.clientY, wp.x, wp.y);
+    return;
+  }
+
+  const wp = screenToWorld(e.clientX, e.clientY);
+  createNodeByTool(STATE.tool, wp.x, wp.y);
+});
+
+canvasContainer.addEventListener('click', e => {
+  if (e.target === canvasContainer || e.target === canvasWorld) {
+    clearSelection();
+    hideContextMenu();
+    hideCmdPalette();
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  // Panning
+  if (STATE.panning) {
+    STATE.camera.x = STATE.panning.origX + e.clientX - STATE.panning.startX;
+    STATE.camera.y = STATE.panning.origY + e.clientY - STATE.panning.startY;
+    applyCamera();
+    drawMinimap();
+    return;
+  }
+
+  // Dragging nodes
+  if (STATE.dragging) {
+    const dx = (e.clientX - STATE.dragging.startX) / STATE.camera.zoom;
+    const dy = (e.clientY - STATE.dragging.startY) / STATE.camera.zoom;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) STATE.dragging.moved = true;
+    STATE.dragging.nodeIds.forEach(nid => {
+      const n = STATE.nodes.find(x => x.id === nid);
+      if (n && STATE.dragging.origPositions[nid]) {
+        n.x = STATE.dragging.origPositions[nid].x + dx;
+        n.y = STATE.dragging.origPositions[nid].y + dy;
+        updateNodeEl(n);
+      }
+    });
+    renderConnections();
+    drawMinimap();
+    return;
+  }
+
+  // Resizing
+  if (STATE.resizing) {
+    const dx = (e.clientX - STATE.resizing.startX) / STATE.camera.zoom;
+    const dy = (e.clientY - STATE.resizing.startY) / STATE.camera.zoom;
+    const n = STATE.nodes.find(x => x.id === STATE.resizing.nodeId);
+    if (n) {
+      n.w = Math.max(80, STATE.resizing.origW + dx);
+      n.h = Math.max(60, STATE.resizing.origH + dy);
+      updateNodeEl(n);
+      renderNode(n); // re-render for shape updates
+      renderConnections();
+    }
+    return;
+  }
+
+  // Connecting
+  if (STATE.connecting) {
+    const wp = screenToWorld(e.clientX, e.clientY);
+    updateTempLine(wp.x, wp.y);
+    return;
+  }
+
+  // Box select
+  if (STATE.boxSelect) {
+    const rect = canvasContainer.getBoundingClientRect();
+    const ex = e.clientX - rect.left;
+    const ey = e.clientY - rect.top;
+    const x = Math.min(ex, STATE.boxSelect.startX);
+    const y = Math.min(ey, STATE.boxSelect.startY);
+    const w = Math.abs(ex - STATE.boxSelect.startX);
+    const h = Math.abs(ey - STATE.boxSelect.startY);
+    boxSelectEl.style.cssText = `display:block;left:${x}px;top:${y}px;width:${w}px;height:${h}px;`;
+    return;
+  }
+});
+
+document.addEventListener('mouseup', e => {
+  if (STATE.panning) {
+    STATE.panning = null;
+    canvasContainer.classList.remove('panning');
+    saveBoards();
+    return;
+  }
+
+  if (STATE.dragging) {
+    if (STATE.dragging.moved) saveBoards();
+    STATE.dragging = null;
+    return;
+  }
+
+  if (STATE.resizing) {
+    STATE.resizing = null;
+    saveBoards();
+    return;
+  }
+
+  if (STATE.connecting) {
+    // Check if released on a node
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const nodeEl = el && el.closest('.node');
+    if (nodeEl) {
+      const toId = nodeEl.id.replace('node-', '');
+      if (toId !== STATE.connecting.fromId) {
+        const wp = screenToWorld(e.clientX, e.clientY);
+        const toNode = STATE.nodes.find(n => n.id === toId);
+        const toSide = getClosestSide(toNode, wp.x, wp.y);
+        pushHistory();
+        STATE.connections.push({
+          id: uid(),
+          fromId: STATE.connecting.fromId,
+          fromSide: STATE.connecting.fromSide,
+          toId,
+          toSide,
+        });
+        saveBoards();
+      }
+    }
+    removeTempLine();
+    STATE.connecting = null;
+    renderConnections();
+    return;
+  }
+
+  if (STATE.boxSelect) {
+    applyBoxSelect();
+    STATE.boxSelect = null;
+    boxSelectEl.style.display = 'none';
+    return;
+  }
+});
+
+function startResize(e, nodeId) {
+  e.stopPropagation();
+  e.preventDefault();
+  const n = STATE.nodes.find(x => x.id === nodeId);
+  if (!n) return;
+  pushHistory();
+  STATE.resizing = { nodeId, startX: e.clientX, startY: e.clientY, origW: n.w, origH: n.h };
+}
+
+function startConnect(e, fromId, fromSide) {
+  e.preventDefault();
+  STATE.connecting = { fromId, fromSide };
+  const n = STATE.nodes.find(x => x.id === fromId);
+  const fp = getSidePoint(n, fromSide);
+  // Create temp line
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.id = 'tempLine';
+  line.setAttribute('stroke', '#7c6af5');
+  line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-dasharray', '6 3');
+  line.setAttribute('x1', fp.x); line.setAttribute('y1', fp.y);
+  line.setAttribute('x2', fp.x); line.setAttribute('y2', fp.y);
+  connSvg.appendChild(line);
+  STATE.connecting.tempLine = line;
+  STATE.connecting.fp = fp;
+}
+
+function updateTempLine(wx, wy) {
+  const line = STATE.connecting.tempLine;
+  if (!line) return;
+  line.setAttribute('x2', wx); line.setAttribute('y2', wy);
+}
+
+function removeTempLine() {
+  const line = document.getElementById('tempLine');
+  if (line) line.remove();
+}
+
+function getClosestSide(node, wx, wy) {
+  const cx = node.x + node.w / 2, cy = node.y + node.h / 2;
+  const dx = wx - cx, dy = wy - cy;
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+  return dy > 0 ? 'bottom' : 'top';
+}
+
+function applyBoxSelect() {
+  const bx = parseFloat(boxSelectEl.style.left);
+  const by = parseFloat(boxSelectEl.style.top);
+  const bw = parseFloat(boxSelectEl.style.width);
+  const bh = parseFloat(boxSelectEl.style.height);
+  const wp1 = screenToWorld(bx + canvasContainer.getBoundingClientRect().left, by + canvasContainer.getBoundingClientRect().top);
+  const wp2 = screenToWorld(bx + bw + canvasContainer.getBoundingClientRect().left, by + bh + canvasContainer.getBoundingClientRect().top);
+  const minX = Math.min(wp1.x, wp2.x), maxX = Math.max(wp1.x, wp2.x);
+  const minY = Math.min(wp1.y, wp2.y), maxY = Math.max(wp1.y, wp2.y);
+
+  STATE.selected = STATE.nodes
+    .filter(n => n.x + n.w > minX && n.x < maxX && n.y + n.h > minY && n.y < maxY)
+    .map(n => n.id);
+  updateSelection();
+  if (STATE.selected.length === 1) showPropsForSelected();
+}
+
+// ======================== WHEEL ZOOM ========================
+canvasContainer.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 1 : -1;
+  const factor = e.ctrlKey ? 1 + delta * 0.15 : 1 + delta * ZOOM_STEP;
+  setZoom(STATE.camera.zoom * factor, e.clientX, e.clientY);
+}, { passive: false });
+
+// Pinch zoom on trackpads
+canvasContainer.addEventListener('gesturechange', e => {
+  e.preventDefault();
+  setZoom(STATE.camera.zoom * e.scale, e.clientX, e.clientY);
+}, { passive: false });
+
+// ======================== TOOL SELECTION ========================
+function setTool(tool) {
+  STATE.tool = tool;
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tool === tool);
+  });
+  canvasContainer.className = 'canvas-container tool-' + tool;
+  if (tool === 'hand') canvasContainer.classList.add('tool-hand');
+}
+
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => setTool(btn.dataset.tool));
+});
+
+// ======================== KEYBOARD SHORTCUTS ========================
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement.tagName;
+  const editing = document.activeElement.isContentEditable ||
+    tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+  // Always
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); toggleCmdPalette(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); toggleSearch(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !editing) { e.preventDefault(); selectAll(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !editing) { copySelected(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !editing) { pasteClipboard(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'd' && !editing) { e.preventDefault(); duplicateSelected(); return; }
+
+  if (editing) return;
+
+  // Tool shortcuts
+  if (e.key === 'v' || e.key === 'Escape') { setTool('select'); clearSelection(); hideCmdPalette(); return; }
+  if (e.key === 'h') { setTool('hand'); return; }
+  if (e.key === 's') { setTool('sticky'); return; }
+  if (e.key === 'c') { setTool('card'); return; }
+  if (e.key === 't') { setTool('text'); return; }
+  if (e.key === 'r') { setTool('rect'); return; }
+  if (e.key === 'e') { setTool('circle'); return; }
+  if (e.key === 'd') { setTool('diamond'); return; }
+  if (e.key === 'a') { setTool('connect'); return; }
+  if (e.key === 'f') { setTool('frame'); return; }
+
+  // Zoom
+  if (e.key === '=' || e.key === '+') { setZoom(STATE.camera.zoom * (1 + ZOOM_STEP)); return; }
+  if (e.key === '-') { setZoom(STATE.camera.zoom * (1 - ZOOM_STEP)); return; }
+  if (e.key === '0') { setZoom(1); centerCamera(); return; }
+  if (e.key === 'F' || (e.ctrlKey && e.key === 'Shift' && e.key === 'F')) { zoomToFit(); return; }
+
+  // Delete
+  if ((e.key === 'Delete' || e.key === 'Backspace') && STATE.selected.length) {
+    deleteSelected(); return;
+  }
+
+  // Nudge
+  const nudge = e.shiftKey ? 20 : 4;
+  if (e.key === 'ArrowLeft')  { moveSelected(-nudge, 0); return; }
+  if (e.key === 'ArrowRight') { moveSelected(nudge, 0); return; }
+  if (e.key === 'ArrowUp')    { moveSelected(0, -nudge); return; }
+  if (e.key === 'ArrowDown')  { moveSelected(0, nudge); return; }
+
+  // Space = hand temporarily
+  if (e.key === ' ') { e.preventDefault(); canvasContainer.classList.add('tool-hand'); }
+});
+
+document.addEventListener('keyup', e => {
+  if (e.key === ' ') { canvasContainer.classList.remove('tool-hand'); }
+});
+
+function moveSelected(dx, dy) {
+  pushHistory();
+  STATE.selected.forEach(id => {
+    const n = STATE.nodes.find(x => x.id === id);
+    if (n) { n.x += dx; n.y += dy; updateNodeEl(n); }
+  });
+  renderConnections();
+  saveBoards();
+}
+
+function deleteSelected() {
+  if (!STATE.selected.length) return;
+  pushHistory();
+  STATE.nodes = STATE.nodes.filter(n => !STATE.selected.includes(n.id));
+  STATE.connections = STATE.connections.filter(c =>
+    !STATE.selected.includes(c.fromId) && !STATE.selected.includes(c.toId) && !STATE.selected.includes(c.id)
+  );
+  STATE.selected.forEach(id => {
+    const el = document.getElementById('node-' + id);
+    if (el) el.remove();
+  });
+  STATE.selected = [];
+  renderConnections();
+  saveBoards();
+  drawMinimap();
+  hidePropsPanel();
+}
+
+let clipboard = [];
+function copySelected() {
+  clipboard = deepClone(STATE.nodes.filter(n => STATE.selected.includes(n.id)));
+}
+function pasteClipboard() {
+  if (!clipboard.length) return;
+  pushHistory();
+  STATE.selected = [];
+  clipboard.forEach(n => {
+    const clone = { ...deepClone(n), id: uid(), x: n.x + 30, y: n.y + 30 };
+    STATE.nodes.push(clone);
+    renderNode(clone);
+    STATE.selected.push(clone.id);
+  });
+  clipboard = deepClone(STATE.nodes.filter(n => STATE.selected.includes(n.id)));
+  updateSelection();
+  saveBoards();
+}
+function duplicateSelected() {
+  copySelected(); pasteClipboard();
+}
+
+// ======================== CREATE BY TOOL ========================
+function createNodeByTool(tool, wx, wy) {
+  if (['sticky','card','text','rect','circle','diamond','frame'].includes(tool)) {
+    const node = createNode(tool, wx, wy);
+    pushHistory();
+    STATE.selected = [node.id];
+    updateSelection();
+    setTimeout(() => enableEditing(node), 50);
+    setTool('select');
+  }
+}
+
+// ======================== NODE MENU ========================
+let _nodeMenuPos = { wx: 0, wy: 0 };
+function showNodeMenu(sx, sy, wx, wy) {
+  _nodeMenuPos = { wx, wy };
+  nodeMenu.style.cssText = `left:${sx}px;top:${sy}px;`;
+  nodeMenu.classList.remove('hidden');
+}
+function hideNodeMenu() { nodeMenu.classList.add('hidden'); }
+
+nodeMenu.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const type = btn.dataset.type;
+    hideNodeMenu();
+    const node = createNode(type, _nodeMenuPos.wx, _nodeMenuPos.wy);
+    pushHistory();
+    STATE.selected = [node.id];
+    updateSelection();
+    setTimeout(() => enableEditing(node), 50);
+  });
+});
+document.addEventListener('click', e => {
+  if (!nodeMenu.contains(e.target)) hideNodeMenu();
+});
+
+// ======================== CONTEXT MENU ========================
+function showNodeContextMenu(sx, sy) {
+  const node = STATE.nodes.find(n => STATE.selected.includes(n.id));
+  contextMenu.innerHTML = '';
+
+  const items = [
+    { icon: '✏️', label: 'Редактировать', action: () => node && enableEditing(node) },
+    { icon: '📋', label: 'Копировать', hint: 'Ctrl+C', action: copySelected },
+    { icon: '⎘',  label: 'Дублировать', hint: 'Ctrl+D', action: duplicateSelected },
+    { divider: true },
+    { icon: '🔁', label: 'На передний план', action: bringToFront },
+    { icon: '🔁', label: 'На задний план', action: sendToBack },
+    { divider: true },
+    { icon: '🗑', label: 'Удалить', hint: 'Del', action: deleteSelected, danger: true },
+  ];
+
+  items.forEach(item => {
+    if (item.divider) { const d = document.createElement('div'); d.className = 'ctx-divider'; contextMenu.appendChild(d); return; }
+    const el = document.createElement('div');
+    el.className = 'ctx-item' + (item.danger ? ' danger' : '');
+    el.innerHTML = `<span class="ctx-icon">${item.icon}</span><span>${item.label}</span>${item.hint ? `<span class="cmd-item-hint">${item.hint}</span>` : ''}`;
+    el.addEventListener('click', () => { item.action(); hideContextMenu(); });
+    contextMenu.appendChild(el);
+  });
+
+  contextMenu.style.cssText = `left:${sx}px;top:${sy}px;`;
+  contextMenu.classList.remove('hidden');
+}
+
+function showConnContextMenu(sx, sy, connId) {
+  contextMenu.innerHTML = '';
+  const del = document.createElement('div');
+  del.className = 'ctx-item danger';
+  del.innerHTML = '<span class="ctx-icon">🗑</span><span>Удалить связь</span>';
+  del.addEventListener('click', () => {
+    pushHistory();
+    STATE.connections = STATE.connections.filter(c => c.id !== connId);
+    renderConnections();
+    saveBoards();
+    hideContextMenu();
+  });
+  contextMenu.appendChild(del);
+  contextMenu.style.cssText = `left:${sx}px;top:${sy}px;`;
+  contextMenu.classList.remove('hidden');
+}
+
+function hideContextMenu() { contextMenu.classList.add('hidden'); }
+document.addEventListener('click', e => { if (!contextMenu.contains(e.target)) hideContextMenu(); });
+canvasContainer.addEventListener('contextmenu', e => { e.preventDefault(); hideContextMenu(); });
+
+function bringToFront() {
+  STATE.selected.forEach(id => {
+    const idx = STATE.nodes.findIndex(n => n.id === id);
+    if (idx > -1) {
+      const [n] = STATE.nodes.splice(idx, 1);
+      STATE.nodes.push(n);
+      const el = document.getElementById('node-' + id);
+      if (el) canvasWorld.appendChild(el);
+    }
+  });
+}
+
+function sendToBack() {
+  STATE.selected.forEach(id => {
+    const idx = STATE.nodes.findIndex(n => n.id === id);
+    if (idx > -1) {
+      const [n] = STATE.nodes.splice(idx, 1);
+      STATE.nodes.unshift(n);
+      const firstEl = canvasWorld.querySelector('.node');
+      const el = document.getElementById('node-' + id);
+      if (el && firstEl) canvasWorld.insertBefore(el, firstEl);
+    }
+  });
+}
+
+// ======================== PROPS PANEL ========================
+function showPropsForSelected() {
+  if (STATE.selected.length !== 1) { hidePropsPanel(); return; }
+  const node = STATE.nodes.find(n => n.id === STATE.selected[0]);
+  if (!node) return;
+  propsPanel.classList.remove('hidden');
+  $('propsTitle').textContent = { sticky: 'Стикер', card: 'Задача', text: 'Текст', rect: 'Прямоугольник', circle: 'Эллипс', diamond: 'Ромб', frame: 'Фрейм' }[node.type] || 'Свойства';
+  buildPropsBody(node);
+}
+
+function buildPropsBody(node) {
+  propsBody.innerHTML = '';
+
+  // Color row
+  if (node.type === 'sticky' || node.type === 'card') {
+    const row = mkPropRow('Цвет');
+    const colors = node.type === 'sticky' ? STICKY_COLORS : SHAPE_COLORS;
+    const colorRow = document.createElement('div');
+    colorRow.className = 'color-row';
+    colors.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = 'color-swatch' + (node.color === c ? ' active' : '');
+      sw.style.background = c;
+      sw.addEventListener('click', () => {
+        node.color = c;
+        colorRow.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        sw.classList.add('active');
+        renderNode(node);
+        renderConnections();
+        saveBoards();
+      });
+      colorRow.appendChild(sw);
+    });
+    row.appendChild(colorRow);
+    propsBody.appendChild(row);
+  }
+
+  if (node.type === 'rect' || node.type === 'circle' || node.type === 'diamond') {
+    const row = mkPropRow('Обводка');
+    const colorRow = document.createElement('div');
+    colorRow.className = 'color-row';
+    SHAPE_COLORS.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = 'color-swatch' + (node.color === c ? ' active' : '');
+      sw.style.background = c;
+      sw.addEventListener('click', () => {
+        node.color = c;
+        colorRow.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        sw.classList.add('active');
+        renderNode(node);
+        saveBoards();
+      });
+      colorRow.appendChild(sw);
+    });
+    row.appendChild(colorRow);
+    propsBody.appendChild(row);
+  }
+
+  // Status for card
+  if (node.type === 'card') {
+    const row = mkPropRow('Статус');
+    const sel = document.createElement('select');
+    sel.className = 'prop-select';
+    Object.entries(STATUS_NAMES).forEach(([val, label]) => {
+      const opt = document.createElement('option');
+      opt.value = val; opt.textContent = label;
+      if (node.status === val) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => {
+      node.status = sel.value;
+      renderNode(node);
+      saveBoards();
+    });
+    row.appendChild(sel);
+    propsBody.appendChild(row);
+
+    // Due date
+    const dueRow = mkPropRow('Дедлайн');
+    const dueInput = document.createElement('input');
+    dueInput.type = 'date'; dueInput.className = 'prop-input'; dueInput.value = node.due || '';
+    dueInput.addEventListener('change', () => { node.due = dueInput.value; renderNode(node); saveBoards(); });
+    dueRow.appendChild(dueInput);
+    propsBody.appendChild(dueRow);
+
+    // Tags
+    const tagRow = mkPropRow('Теги');
+    const tagsWrap = document.createElement('div');
+    tagsWrap.className = 'prop-tags';
+    (node.tags || []).forEach(tag => {
+      const t = document.createElement('span');
+      t.className = 'card-tag';
+      t.textContent = '#' + tag;
+      t.style.cursor = 'pointer';
+      t.addEventListener('click', () => {
+        node.tags = node.tags.filter(x => x !== tag);
+        buildPropsBody(node);
+        renderNode(node);
+        saveBoards();
+      });
+      tagsWrap.appendChild(t);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.className = 'prop-tag-add';
+    addBtn.textContent = '+ тег';
+    addBtn.addEventListener('click', () => {
+      const tag = prompt('Название тега:');
+      if (tag && tag.trim()) {
+        node.tags = node.tags || [];
+        node.tags.push(tag.trim().toLowerCase().replace(/\s+/g, '_'));
+        buildPropsBody(node);
+        renderNode(node);
+        saveBoards();
+      }
+    });
+    tagsWrap.appendChild(addBtn);
+    tagRow.appendChild(tagsWrap);
+    propsBody.appendChild(tagRow);
+  }
+
+  // Size
+  const divider = document.createElement('div');
+  divider.className = 'prop-divider';
+  propsBody.appendChild(divider);
+
+  const sizeRow = mkPropRow('Размер');
+  const sizeWrap = document.createElement('div');
+  sizeWrap.style.display = 'grid';
+  sizeWrap.style.gridTemplateColumns = '1fr 1fr';
+  sizeWrap.style.gap = '6px';
+  const wInput = mkInput('Ш', node.w, v => { node.w = parseInt(v)||80; updateNodeEl(node); renderNode(node); saveBoards(); });
+  const hInput = mkInput('В', node.h, v => { node.h = parseInt(v)||60; updateNodeEl(node); renderNode(node); saveBoards(); });
+  sizeWrap.appendChild(wInput);
+  sizeWrap.appendChild(hInput);
+  sizeRow.appendChild(sizeWrap);
+  propsBody.appendChild(sizeRow);
+
+  // Position
+  const posRow = mkPropRow('Позиция');
+  const posWrap = document.createElement('div');
+  posWrap.style.display = 'grid';
+  posWrap.style.gridTemplateColumns = '1fr 1fr';
+  posWrap.style.gap = '6px';
+  const xInput = mkInput('X', Math.round(node.x), v => { node.x = parseInt(v)||0; updateNodeEl(node); renderConnections(); saveBoards(); });
+  const yInput = mkInput('Y', Math.round(node.y), v => { node.y = parseInt(v)||0; updateNodeEl(node); renderConnections(); saveBoards(); });
+  posWrap.appendChild(xInput);
+  posWrap.appendChild(yInput);
+  posRow.appendChild(posWrap);
+  propsBody.appendChild(posRow);
+
+  // Delete button
+  const delRow = document.createElement('div');
+  delRow.style.marginTop = '8px';
+  const delBtn = document.createElement('button');
+  delBtn.className = 'btn-secondary full-width';
+  delBtn.style.color = 'var(--red)';
+  delBtn.textContent = '🗑 Удалить';
+  delBtn.addEventListener('click', deleteSelected);
+  delRow.appendChild(delBtn);
+  propsBody.appendChild(delRow);
+}
+
+function mkPropRow(label) {
+  const row = document.createElement('div');
+  row.className = 'prop-row';
+  const lbl = document.createElement('div');
+  lbl.className = 'prop-label';
+  lbl.textContent = label;
+  row.appendChild(lbl);
+  return row;
+}
+
+function mkInput(placeholder, value, onChange) {
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.className = 'prop-input';
+  inp.placeholder = placeholder; inp.value = value;
+  inp.addEventListener('change', () => onChange(inp.value));
+  return inp;
+}
+
+function hidePropsPanel() { propsPanel.classList.add('hidden'); }
+$('closePropsPanelBtn').addEventListener('click', hidePropsPanel);
+
+function cycleStatus(node) {
+  const statuses = ['todo', 'doing', 'done', 'blocked'];
+  const idx = statuses.indexOf(node.status);
+  node.status = statuses[(idx + 1) % statuses.length];
+  renderNode(node);
+  if (STATE.selected.includes(node.id)) buildPropsBody(node);
+  saveBoards();
+}
+
+// ======================== SEARCH ========================
+function toggleSearch() {
+  searchPanel.classList.toggle('hidden');
+  if (!searchPanel.classList.contains('hidden')) {
+    searchInput.focus();
+    searchInput.select();
+  }
+}
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  searchResults.innerHTML = '';
+  if (!q) return;
+
+  const results = [];
+  STATE.nodes.forEach(n => {
+    const texts = [n.text||'', n.title||'', n.desc||'', n.label||''].join(' ').toLowerCase();
+    if (texts.includes(q)) results.push(n);
+  });
+
+  if (!results.length) {
+    searchResults.innerHTML = '<div style="padding:12px 16px;color:var(--text3);font-size:13px;">Ничего не найдено</div>';
+    return;
+  }
+
+  results.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'search-result';
+    const title = (n.title || n.text || n.label || n.type).slice(0, 40) || 'Без названия';
+    el.innerHTML = `<div class="search-result-title">${highlight(title, q)}</div>
+      <div class="search-result-preview">${n.type}</div>`;
+    el.addEventListener('click', () => {
+      // Navigate to node
+      const ctr = canvasContainer.getBoundingClientRect();
+      STATE.camera.x = ctr.width / 2 - (n.x + n.w/2) * STATE.camera.zoom;
+      STATE.camera.y = ctr.height / 2 - (n.y + n.h/2) * STATE.camera.zoom;
+      applyCamera();
+      STATE.selected = [n.id];
+      updateSelection();
+      searchPanel.classList.add('hidden');
+    });
+    searchResults.appendChild(el);
+  });
+});
+
+function highlight(text, q) {
+  return text.replace(new RegExp(`(${q})`, 'gi'), '<mark>$1</mark>');
+}
+
+$('searchBtn').addEventListener('click', toggleSearch);
+
+// ======================== COMMAND PALETTE ========================
+const COMMANDS = [
+  { section: 'Создать' },
+  { icon: '📝', name: 'Стикер', hint: 'S', action: () => { setTool('sticky'); hideCmdPalette(); } },
+  { icon: '✅', name: 'Задача', hint: 'C', action: () => { setTool('card'); hideCmdPalette(); } },
+  { icon: 'T',  name: 'Текст', hint: 'T', action: () => { setTool('text'); hideCmdPalette(); } },
+  { icon: '▭',  name: 'Прямоугольник', hint: 'R', action: () => { setTool('rect'); hideCmdPalette(); } },
+  { icon: '◯',  name: 'Эллипс', hint: 'E', action: () => { setTool('circle'); hideCmdPalette(); } },
+  { icon: '◇',  name: 'Ромб', hint: 'D', action: () => { setTool('diamond'); hideCmdPalette(); } },
+  { icon: '🗂',  name: 'Фрейм', hint: 'F', action: () => { setTool('frame'); hideCmdPalette(); } },
+  { section: 'Вид' },
+  { icon: '⊙',  name: 'По размеру', hint: 'Ctrl+Shift+F', action: () => { zoomToFit(); hideCmdPalette(); } },
+  { icon: '100%',name: '100%', hint: '0', action: () => { setZoom(1); centerCamera(); hideCmdPalette(); } },
+  { icon: '▶',  name: 'Презентация', hint: 'P', action: () => { hideCmdPalette(); startPresentation(); } },
+  { icon: '◑',  name: 'Сменить тему', action: () => { toggleTheme(); hideCmdPalette(); } },
+  { section: 'Правка' },
+  { icon: '↩',  name: 'Отменить', hint: 'Ctrl+Z', action: () => { undo(); hideCmdPalette(); } },
+  { icon: '↪',  name: 'Повторить', hint: 'Ctrl+Y', action: () => { redo(); hideCmdPalette(); } },
+  { icon: '⎘',  name: 'Дублировать', hint: 'Ctrl+D', action: () => { duplicateSelected(); hideCmdPalette(); } },
+  { icon: '🗑',  name: 'Удалить выбранное', hint: 'Del', action: () => { deleteSelected(); hideCmdPalette(); } },
+  { icon: '✓',  name: 'Выбрать всё', hint: 'Ctrl+A', action: () => { selectAll(); hideCmdPalette(); } },
+  { section: 'Экспорт' },
+  { icon: '⬇',  name: 'Экспорт JSON', action: () => { exportJson(); hideCmdPalette(); } },
+  { icon: '⬇',  name: 'Экспорт PNG', action: () => { exportPng(); hideCmdPalette(); } },
+  { icon: '⬇',  name: 'Экспорт Markdown', action: () => { exportMarkdown(); hideCmdPalette(); } },
+];
+
+function toggleCmdPalette() {
+  cmdPalette.classList.toggle('hidden');
+  if (!cmdPalette.classList.contains('hidden')) {
+    cmdInput.value = '';
+    cmdInput.focus();
+    renderCmdList('');
+  }
+}
+function hideCmdPalette() { cmdPalette.classList.add('hidden'); }
+
+function renderCmdList(q) {
+  cmdList.innerHTML = '';
+  let cmdIdx = 0;
+  let activeIdx = 0;
+
+  COMMANDS.forEach(cmd => {
+    if (cmd.section) {
+      if (q) return;
+      const sec = document.createElement('div');
+      sec.className = 'cmd-section';
+      sec.textContent = cmd.section;
+      cmdList.appendChild(sec);
+      return;
+    }
+    if (q && !cmd.name.toLowerCase().includes(q.toLowerCase())) return;
+
+    const el = document.createElement('div');
+    el.className = 'cmd-item';
+    el.dataset.idx = cmdIdx++;
+    el.innerHTML = `<span class="cmd-item-icon">${cmd.icon}</span><span class="cmd-item-name">${cmd.name}</span>${cmd.hint ? `<span class="cmd-item-hint">${cmd.hint}</span>` : ''}`;
+    el.addEventListener('click', () => { cmd.action(); });
+    cmdList.appendChild(el);
+  });
+}
+
+cmdInput.addEventListener('input', () => renderCmdList(cmdInput.value));
+cmdInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { hideCmdPalette(); return; }
+  const items = cmdList.querySelectorAll('.cmd-item');
+  const active = cmdList.querySelector('.cmd-item.active');
+  let idx = active ? parseInt(active.dataset.idx) : -1;
+  if (e.key === 'ArrowDown') { idx = Math.min(idx + 1, items.length - 1); }
+  if (e.key === 'ArrowUp')   { idx = Math.max(idx - 1, 0); }
+  items.forEach(el => el.classList.toggle('active', parseInt(el.dataset.idx) === idx));
+  if (e.key === 'Enter') {
+    const activeEl = cmdList.querySelector('.cmd-item.active');
+    if (activeEl) activeEl.click();
+    else if (items.length) items[0].click();
+  }
+});
+
+// ======================== TOPBAR BUTTONS ========================
+$('zoomInBtn').addEventListener('click',  () => setZoom(STATE.camera.zoom * (1 + ZOOM_STEP)));
+$('zoomOutBtn').addEventListener('click', () => setZoom(STATE.camera.zoom * (1 - ZOOM_STEP)));
+$('zoomFitBtn').addEventListener('click', zoomToFit);
+$('zoom100Btn').addEventListener('click', () => { setZoom(1); centerCamera(); });
+zoomDisplay.addEventListener('click', () => {
+  const v = prompt('Зум (%):', Math.round(STATE.camera.zoom * 100));
+  if (v) setZoom(parseInt(v) / 100);
+});
+$('undoBtn').addEventListener('click', undo);
+$('redoBtn').addEventListener('click', redo);
+$('searchBtn').addEventListener('click', toggleSearch);
+$('presentBtn').addEventListener('click', startPresentation);
+$('exportBtn').addEventListener('click', () => exportModal.classList.remove('hidden'));
+$('closeExportBtn').addEventListener('click', () => exportModal.classList.add('hidden'));
+$('exportJsonBtn').addEventListener('click', exportJson);
+$('exportPngBtn').addEventListener('click', exportPng);
+$('exportMdBtn').addEventListener('click', exportMarkdown);
+$('importJsonInput').addEventListener('change', importJson);
+
+// ======================== PRESENTATION ========================
+function startPresentation() {
+  const frames = STATE.nodes.filter(n => n.type === 'frame');
+  if (!frames.length) { alert('Добавьте фреймы (F) для презентации'); return; }
+  STATE.presentFrames = frames;
+  STATE.presentIndex = 0;
+  presentMode.classList.remove('hidden');
+  showPresentFrame(0);
+}
+
+function showPresentFrame(idx) {
+  if (!STATE.presentFrames.length) return;
+  idx = clamp(idx, 0, STATE.presentFrames.length - 1);
+  STATE.presentIndex = idx;
+  const frame = STATE.presentFrames[idx];
+  $('presentCounter').textContent = `${idx + 1} / ${STATE.presentFrames.length}`;
+
+  const ctr = canvasContainer.getBoundingClientRect();
+  const pad = 40;
+  const scaleX = (ctr.width - pad * 2) / frame.w;
+  const scaleY = (ctr.height - pad * 2) / frame.h;
+  const zoom = clamp(Math.min(scaleX, scaleY), MIN_ZOOM, MAX_ZOOM);
+  STATE.camera.zoom = zoom;
+  STATE.camera.x = (ctr.width - frame.w * zoom) / 2 - frame.x * zoom;
+  STATE.camera.y = (ctr.height - frame.h * zoom) / 2 - frame.y * zoom;
+  applyCamera();
+  updateZoomDisplay();
+}
+
+$('prevFrameBtn').addEventListener('click', () => showPresentFrame(STATE.presentIndex - 1));
+$('nextFrameBtn').addEventListener('click', () => showPresentFrame(STATE.presentIndex + 1));
+$('exitPresentBtn').addEventListener('click', () => presentMode.classList.add('hidden'));
+
+document.addEventListener('keydown', e => {
+  if (presentMode.classList.contains('hidden')) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') showPresentFrame(STATE.presentIndex + 1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   showPresentFrame(STATE.presentIndex - 1);
+  if (e.key === 'Escape') presentMode.classList.add('hidden');
+});
+
+// ======================== EXPORT / IMPORT ========================
+function exportJson() {
+  saveBoards();
+  const b = STATE.boards.find(x => x.id === STATE.currentBoard);
+  const data = { nodes: STATE.nodes, connections: STATE.connections, camera: STATE.camera, name: b?.name };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  download(blob, (b?.name || 'board') + '.json');
+  exportModal.classList.add('hidden');
+}
+
+function exportMarkdown() {
+  const lines = [];
+  STATE.nodes.forEach(n => {
+    if (n.type === 'card') {
+      lines.push(`## ${n.title || 'Задача'}`);
+      lines.push(`**Статус:** ${STATUS_NAMES[n.status]}`);
+      if (n.desc) lines.push(n.desc);
+      if (n.due) lines.push(`**Дедлайн:** ${n.due}`);
+      if (n.tags?.length) lines.push(`**Теги:** ${n.tags.map(t => '#'+t).join(', ')}`);
+      lines.push('');
+    } else if (n.type === 'sticky' || n.type === 'text') {
+      if (n.text) { lines.push(n.text); lines.push(''); }
+    } else if (n.type === 'frame') {
+      lines.push(`# ${n.label || 'Фрейм'}`); lines.push('');
+    }
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  download(blob, 'board.md');
+  exportModal.classList.add('hidden');
+}
+
+async function exportPng() {
+  if (!STATE.nodes.length) return;
+  exportModal.classList.add('hidden');
+
+  const bounds = getNodesBounds(STATE.nodes);
+  const pad = 60;
+  const scale = 2;
+  const W = (bounds.width + pad * 2) * scale;
+  const H = (bounds.height + pad * 2) * scale;
+
+  const cvs = document.createElement('canvas');
+  cvs.width = W; cvs.height = H;
+  const ctx = cvs.getContext('2d');
+
+  // Background
+  const isDark = document.body.classList.contains('theme-dark');
+  ctx.fillStyle = isDark ? '#1a1a2e' : '#f0f0fa';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid dots
+  ctx.fillStyle = isDark ? '#3a3a5c' : '#d0d0e8';
+  const gSize = 32 * scale;
+  for (let gx = 0; gx < W; gx += gSize)
+    for (let gy = 0; gy < H; gy += gSize)
+      ctx.fillRect(gx, gy, 2, 2);
+
+  const offsetX = (-bounds.x + pad) * scale;
+  const offsetY = (-bounds.y + pad) * scale;
+
+  // Draw nodes
+  STATE.nodes.forEach(n => {
+    const nx = (n.x * scale) + offsetX;
+    const ny = (n.y * scale) + offsetY;
+    const nw = n.w * scale;
+    const nh = n.h * scale;
+    const r = 10 * scale;
+
+    ctx.save();
+    if (n.type === 'sticky') {
+      ctx.fillStyle = n.color;
+      roundRect(ctx, nx, ny, nw, nh, r);
+      ctx.fill();
+      ctx.fillStyle = isLight(n.color) ? '#1a1a1a' : '#f0f0f0';
+      ctx.font = `${13 * scale}px sans-serif`;
+      wrapText(ctx, n.text || '', nx + 10*scale, ny + 36*scale, nw - 20*scale, 18*scale);
+    } else if (n.type === 'card') {
+      ctx.fillStyle = isDark ? '#1e1e2e' : '#ffffff';
+      roundRect(ctx, nx, ny, nw, nh, r);
+      ctx.fill();
+      ctx.fillStyle = STATUS_COLORS[n.status] || '#6666aa';
+      roundRect(ctx, nx, ny, nw, 4 * scale, [r, r, 0, 0]);
+      ctx.fill();
+      ctx.fillStyle = isDark ? '#e2e2f0' : '#1a1a3e';
+      ctx.font = `bold ${13 * scale}px sans-serif`;
+      ctx.fillText((n.title || 'Задача').slice(0, 28), nx + 10*scale, ny + 22*scale);
+      ctx.fillStyle = isDark ? '#9999bb' : '#5555aa';
+      ctx.font = `${11 * scale}px sans-serif`;
+      wrapText(ctx, n.desc || '', nx + 10*scale, ny + 40*scale, nw - 20*scale, 15*scale);
+    } else if (n.type === 'text') {
+      ctx.fillStyle = isDark ? '#e2e2f0' : '#1a1a3e';
+      ctx.font = `${14 * scale}px sans-serif`;
+      wrapText(ctx, n.text || '', nx, ny + 16*scale, nw, 18*scale);
+    } else if (n.type === 'rect') {
+      ctx.fillStyle = n.fill || 'rgba(124,106,245,0.15)';
+      ctx.strokeStyle = n.color || '#7c6af5';
+      ctx.lineWidth = 2 * scale;
+      roundRect(ctx, nx, ny, nw, nh, r);
+      ctx.fill(); ctx.stroke();
+    } else if (n.type === 'circle') {
+      ctx.fillStyle = n.fill || 'rgba(76,175,142,0.15)';
+      ctx.strokeStyle = n.color || '#4caf8e';
+      ctx.lineWidth = 2 * scale;
+      ctx.beginPath();
+      ctx.ellipse(nx + nw/2, ny + nh/2, nw/2 - scale, nh/2 - scale, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    } else if (n.type === 'diamond') {
+      ctx.fillStyle = n.fill || 'rgba(245,108,108,0.15)';
+      ctx.strokeStyle = n.color || '#f56c6c';
+      ctx.lineWidth = 2 * scale;
+      ctx.beginPath();
+      ctx.moveTo(nx + nw/2, ny + scale);
+      ctx.lineTo(nx + nw - scale, ny + nh/2);
+      ctx.lineTo(nx + nw/2, ny + nh - scale);
+      ctx.lineTo(nx + scale, ny + nh/2);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else if (n.type === 'frame') {
+      ctx.strokeStyle = isDark ? '#3a3a5c' : '#d0d0e8';
+      ctx.lineWidth = 2 * scale;
+      ctx.setLineDash([8*scale, 4*scale]);
+      roundRect(ctx, nx, ny, nw, nh, 8*scale);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = isDark ? '#9999bb' : '#5555aa';
+      ctx.font = `bold ${12 * scale}px sans-serif`;
+      ctx.fillText(n.label || 'Фрейм', nx, ny - 6*scale);
+    }
+    ctx.restore();
+  });
+
+  // Draw connections
+  STATE.connections.forEach(conn => {
+    const from = STATE.nodes.find(n => n.id === conn.fromId);
+    const to   = STATE.nodes.find(n => n.id === conn.toId);
+    if (!from || !to) return;
+    const fp = getSidePoint(from, conn.fromSide);
+    const tp = getSidePoint(to, conn.toSide || 'top');
+    const fx = fp.x * scale + offsetX, fy = fp.y * scale + offsetY;
+    const tx = tp.x * scale + offsetX, ty = tp.y * scale + offsetY;
+    ctx.save();
+    ctx.strokeStyle = isDark ? '#6666aa' : '#8888cc';
+    ctx.lineWidth = 2 * scale;
+    ctx.beginPath();
+    ctx.moveTo(fx, fy);
+    const mx = (fx + tx) / 2;
+    ctx.bezierCurveTo(mx, fy, mx, ty, tx, ty);
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  cvs.toBlob(blob => download(blob, 'board.png'));
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  if (typeof r === 'number') r = [r,r,r,r];
+  ctx.beginPath();
+  ctx.moveTo(x + r[0], y);
+  ctx.lineTo(x + w - r[1], y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r[1]);
+  ctx.lineTo(x + w, y + h - r[2]);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r[2], y + h);
+  ctx.lineTo(x + r[3], y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r[3]);
+  ctx.lineTo(x, y + r[0]);
+  ctx.quadraticCurveTo(x, y, x + r[0], y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = (text || '').split(' ');
+  let line = '';
+  let curY = y;
+  for (let i = 0; i < words.length; i++) {
+    const testLine = line + words[i] + ' ';
+    if (ctx.measureText(testLine).width > maxWidth && i > 0) {
+      ctx.fillText(line, x, curY);
+      line = words[i] + ' ';
+      curY += lineHeight;
+      if (curY > y + lineHeight * 4) { ctx.fillText('…', x, curY); return; }
+    } else { line = testLine; }
+  }
+  ctx.fillText(line, x, curY);
+}
+
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function importJson(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      pushHistory();
+      STATE.nodes = data.nodes || [];
+      STATE.connections = data.connections || [];
+      if (data.camera) STATE.camera = data.camera;
+      renderAll();
+      applyCamera();
+      updateZoomDisplay();
+      saveBoards();
+      exportModal.classList.add('hidden');
+    } catch(err) { alert('Ошибка парсинга JSON'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ======================== MINIMAP ========================
+function drawMinimap() {
+  const ctx = minimap.getContext('2d');
+  const W = minimap.width, H = minimap.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const isDark = document.body.classList.contains('theme-dark');
+  ctx.fillStyle = isDark ? '#16213e' : '#e8e8f5';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!STATE.nodes.length) {
+    drawMinimapViewport(ctx, W, H, 0, 0, 10000, 10000);
+    return;
+  }
+
+  const bounds = getNodesBounds(STATE.nodes);
+  const pad = 20;
+  const scaleX = (W - pad * 2) / (bounds.width || 1);
+  const scaleY = (H - pad * 2) / (bounds.height || 1);
+  const scale = Math.min(scaleX, scaleY, 0.05);
+
+  const offX = pad - bounds.x * scale;
+  const offY = pad - bounds.y * scale;
+
+  STATE.nodes.forEach(n => {
+    const nx = n.x * scale + offX;
+    const ny = n.y * scale + offY;
+    const nw = Math.max(2, n.w * scale);
+    const nh = Math.max(2, n.h * scale);
+    if (n.type === 'sticky') ctx.fillStyle = n.color;
+    else if (n.type === 'card') ctx.fillStyle = STATUS_COLORS[n.status] || '#6666aa';
+    else if (n.type === 'frame') { ctx.strokeStyle = isDark ? '#3a3a5c' : '#d0d0e8'; ctx.strokeRect(nx, ny, nw, nh); return; }
+    else ctx.fillStyle = n.color || '#7c6af5';
+    ctx.fillRect(nx, ny, nw, nh);
+  });
+
+  // Viewport indicator
+  const ctr = canvasContainer.getBoundingClientRect();
+  const vx = (-STATE.camera.x / STATE.camera.zoom) * scale + offX;
+  const vy = (-STATE.camera.y / STATE.camera.zoom) * scale + offY;
+  const vw = (ctr.width  / STATE.camera.zoom) * scale;
+  const vh = (ctr.height / STATE.camera.zoom) * scale;
+
+  ctx.strokeStyle = '#7c6af5';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(vx, vy, vw, vh);
+  ctx.fillStyle = 'rgba(124,106,245,0.08)';
+  ctx.fillRect(vx, vy, vw, vh);
+}
+
+function drawMinimapViewport(ctx, W, H, offX, offY, totalW, totalH) {}
+
+minimap.addEventListener('click', e => {
+  const rect = minimap.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  if (!STATE.nodes.length) return;
+  const bounds = getNodesBounds(STATE.nodes);
+  const pad = 20;
+  const scale = Math.min((minimap.width - pad*2) / (bounds.width||1), (minimap.height - pad*2) / (bounds.height||1), 0.05);
+  const offX = pad - bounds.x * scale;
+  const offY = pad - bounds.y * scale;
+  const wx = (mx - offX) / scale;
+  const wy = (my - offY) / scale;
+  const ctr = canvasContainer.getBoundingClientRect();
+  STATE.camera.x = ctr.width / 2 - wx * STATE.camera.zoom;
+  STATE.camera.y = ctr.height / 2 - wy * STATE.camera.zoom;
+  applyCamera();
+  drawMinimap();
+});
+
+// ======================== THEME ========================
+function toggleTheme() {
+  STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
+  document.body.className = 'theme-' + STATE.theme;
+  try { localStorage.setItem('ideacanvas_theme', STATE.theme); } catch(e) {}
+  drawMinimap();
+}
+$('toggleThemeBtn').addEventListener('click', toggleTheme);
+
+// ======================== MARKDOWN ========================
+function simpleMarkdown(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\n/g,'<br>');
+}
+
+function isLight(hex) {
+  if (!hex || !hex.startsWith('#')) return true;
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 128;
+}
+
+// ======================== DASHBOARD ========================
+function openDashboard() {
+  saveBoards();
+  STATE.currentBoard = null;
+  STATE.nodes = [];
+  STATE.connections = [];
+  STATE.history = [];
+  STATE.future = [];
+  STATE.selected = [];
+  canvasScreen.classList.remove('active');
+  dashboard.classList.add('active');
+  renderDashboard();
+}
+
+function renderDashboard() {
+  boardsGrid.innerHTML = '';
+  const q = $('dashSearch').value.trim().toLowerCase();
+  const filtered = STATE.boards.filter(b => !q || b.name.toLowerCase().includes(q));
+
+  noBoardsMsg.classList.toggle('show', !filtered.length);
+
+  filtered.forEach(b => {
+    const card = document.createElement('div');
+    card.className = 'board-card';
+
+    const thumb = document.createElement('div');
+    thumb.className = 'board-card-thumb';
+    // Mini preview
+    const cvs = document.createElement('canvas');
+    cvs.width = 220; cvs.height = 120;
+    thumb.appendChild(cvs);
+    card.appendChild(thumb);
+
+    const info = document.createElement('div');
+    info.className = 'board-card-info';
+    const left = document.createElement('div');
+    left.innerHTML = `<div class="board-card-name">${b.name}</div><div class="board-card-date">${new Date(b.createdAt).toLocaleDateString('ru')}</div>`;
+    info.appendChild(left);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'board-card-del';
+    delBtn.textContent = '×';
+    delBtn.title = 'Удалить';
+    delBtn.addEventListener('click', e => { e.stopPropagation(); if (confirm('Удалить доску?')) { STATE.boards = STATE.boards.filter(x => x.id !== b.id); saveBoards(); renderDashboard(); } });
+    info.appendChild(delBtn);
+    card.appendChild(info);
+
+    card.addEventListener('click', () => openBoard(b.id));
+    boardsGrid.appendChild(card);
+
+    // Draw mini preview
+    drawBoardThumb(cvs, b);
+  });
+}
+
+function drawBoardThumb(cvs, board) {
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+  const isDark = document.body.classList.contains('theme-dark');
+  ctx.fillStyle = isDark ? '#16213e' : '#e8e8f5';
+  ctx.fillRect(0, 0, W, H);
+  if (!board.nodes?.length) return;
+  const bounds = getNodesBounds(board.nodes);
+  const pad = 10;
+  const scale = Math.min((W - pad*2) / (bounds.width||1), (H - pad*2) / (bounds.height||1));
+  const offX = pad - bounds.x * scale;
+  const offY = pad - bounds.y * scale;
+  board.nodes.forEach(n => {
+    const nx = n.x * scale + offX, ny = n.y * scale + offY;
+    const nw = Math.max(3, n.w * scale), nh = Math.max(3, n.h * scale);
+    if (n.type === 'sticky') ctx.fillStyle = n.color;
+    else if (n.type === 'card') ctx.fillStyle = STATUS_COLORS[n.status] || '#6666aa';
+    else ctx.fillStyle = n.color || '#7c6af5';
+    ctx.fillRect(nx, ny, nw, nh);
+  });
+}
+
+function openBoard(id) {
+  const b = STATE.boards.find(x => x.id === id);
+  if (!b) return;
+  STATE.currentBoard = id;
+  STATE.nodes = deepClone(b.nodes || []);
+  STATE.connections = deepClone(b.connections || []);
+  STATE.camera = deepClone(b.camera || { x: 0, y: 0, zoom: 1 });
+  STATE.history = [];
+  STATE.future = [];
+  STATE.selected = [];
+  $('boardTitleDisplay').textContent = b.name;
+  dashboard.classList.remove('active');
+  canvasScreen.classList.add('active');
+  applyCamera();
+  updateZoomDisplay();
+  renderAll();
+  drawMinimap();
+  if (!STATE.nodes.length) { zoomToFit(); centerCamera(); }
+}
+
+$('newBoardBtn').addEventListener('click', () => {
+  const b = { id: uid(), name: 'Без названия', createdAt: Date.now(), nodes: [], connections: [], camera: { x: 0, y: 0, zoom: 1 } };
+  STATE.boards.unshift(b);
+  openBoard(b.id);
+  setTimeout(() => { $('boardTitleDisplay').focus(); document.execCommand('selectAll'); }, 100);
+});
+
+$('backBtn').addEventListener('click', openDashboard);
+$('dashSearch').addEventListener('input', renderDashboard);
+
+$('boardTitleDisplay').addEventListener('input', () => {
+  const b = STATE.boards.find(x => x.id === STATE.currentBoard);
+  if (b) { b.name = $('boardTitleDisplay').textContent.trim() || 'Без названия'; saveBoards(); }
+});
+
+// ======================== INIT ========================
+function init() {
+  // Load theme
+  try {
+    const t = localStorage.getItem('ideacanvas_theme');
+    if (t) { STATE.theme = t; document.body.className = 'theme-' + t; }
+  } catch(e) {}
+
+  loadBoards();
+
+  if (!STATE.boards.length) {
+    // Create demo board
+    const demo = {
+      id: uid(),
+      name: 'Мой первый проект',
+      createdAt: Date.now(),
+      nodes: [
+        { id: uid(), type: 'sticky', x: 100, y: 80,  w: 180, h: 140, color: '#f5c842', text: '💡 Идея #1\nРазработать MVP за 2 недели' },
+        { id: uid(), type: 'sticky', x: 320, y: 80,  w: 180, h: 140, color: '#7ec8e3', text: '🎯 Цель\nЗапустить до конца месяца' },
+        { id: uid(), type: 'sticky', x: 540, y: 80,  w: 180, h: 140, color: '#b5e7a0', text: '✅ Готово\nДизайн утверждён' },
+        { id: uid(), type: 'card',   x: 100, y: 260, w: 220, h: 150, color: '#7c6af5', status: 'todo', title: 'Настроить CI/CD', desc: 'GitHub Actions + Docker', tags: ['devops'], due: '' },
+        { id: uid(), type: 'card',   x: 360, y: 260, w: 220, h: 150, color: '#4caf8e', status: 'doing', title: 'Написать API', desc: 'REST endpoints для пользователей', tags: ['backend'], due: '' },
+        { id: uid(), type: 'card',   x: 620, y: 260, w: 220, h: 150, color: '#f5a442', status: 'done', title: 'Макет в Figma', desc: 'Все экраны готовы', tags: ['design'], due: '' },
+        { id: uid(), type: 'text',   x: 100, y: 450, w: 300, h: 60, color: '', text: '## Sprint 1 — Инфраструктура\nОсновные задачи недели' },
+        { id: uid(), type: 'frame',  x: 60,  y: 40,  w: 760, h: 200, label: '💡 Идеи и цели' },
+        { id: uid(), type: 'frame',  x: 60,  y: 240, w: 820, h: 200, label: '📋 Задачи' },
+      ],
+      connections: [],
+      camera: { x: 40, y: 20, zoom: 0.9 },
+    };
+    STATE.boards.push(demo);
+    saveBoards();
+  }
+
+  renderDashboard();
+}
+
+init();
