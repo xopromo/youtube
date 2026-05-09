@@ -19,6 +19,7 @@ const STATE = {
   connecting: null,  // {fromId, fromSide, tempLine}
   boxSelect: null,   // {startX, startY}
   theme: 'dark',
+  boardBg: '',       // custom board background color
   presentFrames: [],
   presentIndex: 0,
 };
@@ -281,12 +282,26 @@ function renderSticky(node) {
   const inner = document.createElement('div');
   inner.className = 'node-inner sticky-inner';
   inner.style.background = node.color;
+  inner.style.opacity = node.opacity !== undefined ? node.opacity : 1;
   inner.style.color = isLight(node.color) ? '#1a1a1a' : '#f0f0f0';
+  inner.style.textAlign = node.textAlign || 'left';
+  inner.style.justifyContent = node.verticalAlign === 'center' ? 'center' : node.verticalAlign === 'bottom' ? 'flex-end' : 'flex-start';
+  inner.style.display = 'flex';
+  inner.style.flexDirection = 'column';
+  inner.style.whiteSpace = 'pre-wrap';
   inner.contentEditable = 'false';
-  inner.innerHTML = node.text ? simpleMarkdown(node.text) : '';
-  if (!node.text) inner.setAttribute('data-placeholder', 'Двойной клик для редактирования...');
-  inner.addEventListener('input', () => { node.text = inner.innerText; saveBoards(); });
+  inner.innerHTML = node.html || (node.text ? escapeHtml(node.text) : '');
+  if (!node.text && !node.html) inner.setAttribute('data-placeholder', 'Кликни чтобы писать...');
+  inner.addEventListener('input', () => {
+    node.html = inner.innerHTML;
+    node.text = inner.innerText;
+    saveBoards();
+  });
   return inner;
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
 
 function renderCard(node) {
@@ -617,18 +632,34 @@ function enableEditing(node) {
     const inner = el.querySelector('.sticky-inner, .text-inner');
     if (inner) {
       inner.contentEditable = 'true';
-      inner.innerHTML = node.text || '';
+      // Restore rich HTML if available, otherwise plain text
+      if (node.html) inner.innerHTML = node.html;
+      else inner.innerHTML = node.text ? escapeHtml(node.text) : '';
       inner.focus();
+      // Cursor to end
       const range = document.createRange();
       range.selectNodeContents(inner);
       range.collapse(false);
       window.getSelection().removeAllRanges();
       window.getSelection().addRange(range);
+
+      // Ctrl+B bold, Ctrl+I italic, Ctrl+U underline — native execCommand
+      const onKeyDown = ev => {
+        if (ev.ctrlKey || ev.metaKey) {
+          if (ev.key === 'b') { ev.preventDefault(); document.execCommand('bold'); }
+          if (ev.key === 'i') { ev.preventDefault(); document.execCommand('italic'); }
+          if (ev.key === 'u') { ev.preventDefault(); document.execCommand('underline'); }
+        }
+        // Escape stops editing
+        if (ev.key === 'Escape') { inner.blur(); }
+      };
+      inner.addEventListener('keydown', onKeyDown);
+
       inner.addEventListener('blur', () => {
+        inner.removeEventListener('keydown', onKeyDown);
+        node.html = inner.innerHTML;
         node.text = inner.innerText;
         inner.contentEditable = 'false';
-        if (node.type === 'sticky') inner.innerHTML = simpleMarkdown(node.text);
-        else inner.innerHTML = simpleMarkdown(node.text);
         saveBoards();
       }, { once: true });
     }
@@ -930,6 +961,7 @@ document.addEventListener('keydown', e => {
   if (editing) return;
 
   // Tool shortcuts
+  if (e.key === 'n') { $('quickStickyBtn').click(); return; }
   if (e.key === 'v' || e.key === 'Escape') { setTool('select'); clearSelection(); hideCmdPalette(); return; }
   if (e.key === 'h') { setTool('hand'); return; }
   if (e.key === 's') { setTool('sticky'); return; }
@@ -1161,8 +1193,90 @@ function buildPropsBody(node) {
       });
       colorRow.appendChild(sw);
     });
+    // Custom color picker
+    const customSw = document.createElement('input');
+    customSw.type = 'color';
+    customSw.value = node.color || '#f5c842';
+    customSw.title = 'Любой цвет';
+    customSw.style.cssText = 'width:22px;height:22px;border-radius:50%;border:none;cursor:pointer;padding:0;background:none;';
+    customSw.addEventListener('input', () => {
+      node.color = customSw.value;
+      colorRow.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      renderNode(node); renderConnections(); saveBoards();
+    });
+    colorRow.appendChild(customSw);
     row.appendChild(colorRow);
     propsBody.appendChild(row);
+  }
+
+  // Sticky-specific: opacity, text align, vertical align
+  if (node.type === 'sticky') {
+    // Opacity
+    const opRow = mkPropRow('Прозрачность');
+    const opWrap = document.createElement('div');
+    opWrap.style.display = 'flex'; opWrap.style.alignItems = 'center'; opWrap.style.gap = '8px';
+    const opSlider = document.createElement('input');
+    opSlider.type = 'range'; opSlider.min = 0.1; opSlider.max = 1; opSlider.step = 0.05;
+    opSlider.value = node.opacity !== undefined ? node.opacity : 1;
+    opSlider.style.flex = '1';
+    const opVal = document.createElement('span');
+    opVal.style.cssText = 'font-size:11px;color:var(--text3);min-width:34px;text-align:right;';
+    opVal.textContent = Math.round((node.opacity || 1) * 100) + '%';
+    opSlider.addEventListener('input', () => {
+      node.opacity = parseFloat(opSlider.value);
+      opVal.textContent = Math.round(node.opacity * 100) + '%';
+      const inner = document.querySelector('#node-' + node.id + ' .sticky-inner');
+      if (inner) inner.style.opacity = node.opacity;
+      saveBoards();
+    });
+    opWrap.appendChild(opSlider); opWrap.appendChild(opVal);
+    opRow.appendChild(opWrap); propsBody.appendChild(opRow);
+
+    // Text horizontal align
+    const alignRow = mkPropRow('Выравнивание текста');
+    const alignWrap = document.createElement('div');
+    alignWrap.style.display = 'flex'; alignWrap.style.gap = '4px';
+    [['left','⬛↤','По левому'],['center','⬛↔','По центру'],['right','⬛↦','По правому']].forEach(([val, icon, title]) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-sm' + (( node.textAlign || 'left') === val ? ' active-align' : '');
+      btn.textContent = icon; btn.title = title;
+      btn.style.flex = '1';
+      if ((node.textAlign || 'left') === val) btn.style.background = 'var(--accent-glow)';
+      btn.addEventListener('click', () => {
+        node.textAlign = val;
+        alignWrap.querySelectorAll('button').forEach(b => b.style.background = '');
+        btn.style.background = 'var(--accent-glow)';
+        const inner = document.querySelector('#node-' + node.id + ' .sticky-inner');
+        if (inner) inner.style.textAlign = val;
+        saveBoards();
+      });
+      alignWrap.appendChild(btn);
+    });
+    alignRow.appendChild(alignWrap); propsBody.appendChild(alignRow);
+
+    // Vertical align
+    const valignRow = mkPropRow('Вертикальное выравнивание');
+    const valignWrap = document.createElement('div');
+    valignWrap.style.display = 'flex'; valignWrap.style.gap = '4px';
+    [['top','↑ Вверх'],['center','↕ Центр'],['bottom','↓ Вниз']].forEach(([val, label]) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-sm';
+      btn.textContent = label; btn.style.flex = '1';
+      if ((node.verticalAlign || 'top') === val) btn.style.background = 'var(--accent-glow)';
+      btn.addEventListener('click', () => {
+        node.verticalAlign = val;
+        valignWrap.querySelectorAll('button').forEach(b => b.style.background = '');
+        btn.style.background = 'var(--accent-glow)';
+        const inner = document.querySelector('#node-' + node.id + ' .sticky-inner');
+        if (inner) inner.style.justifyContent = val === 'center' ? 'center' : val === 'bottom' ? 'flex-end' : 'flex-start';
+        saveBoards();
+      });
+      valignWrap.appendChild(btn);
+    });
+    valignRow.appendChild(valignWrap); propsBody.appendChild(valignRow);
+
+    const divS = document.createElement('div'); divS.className = 'prop-divider';
+    propsBody.appendChild(divS);
   }
 
   if (node.type === 'rect' || node.type === 'circle' || node.type === 'diamond') {
@@ -1794,6 +1908,55 @@ minimap.addEventListener('click', e => {
   drawMinimap();
 });
 
+// ======================== BOARD BACKGROUND ========================
+function applyBoardBg() {
+  if (STATE.boardBg) {
+    canvasContainer.style.backgroundColor = STATE.boardBg;
+    canvasContainer.style.backgroundImage = 'none';
+  } else {
+    canvasContainer.style.backgroundColor = '';
+    canvasContainer.style.backgroundImage = '';
+  }
+}
+
+$('boardBgBtn').addEventListener('click', () => {
+  const input = $('boardBgInput');
+  input.value = STATE.boardBg || '#1a1a2e';
+  input.click();
+});
+$('boardBgInput').addEventListener('input', e => {
+  STATE.boardBg = e.target.value;
+  applyBoardBg();
+  const b = STATE.boards.find(x => x.id === STATE.currentBoard);
+  if (b) b.boardBg = STATE.boardBg;
+  saveBoards();
+});
+// Double-click board bg button to reset
+$('boardBgBtn').addEventListener('dblclick', e => {
+  e.preventDefault();
+  STATE.boardBg = '';
+  applyBoardBg();
+  const b = STATE.boards.find(x => x.id === STATE.currentBoard);
+  if (b) b.boardBg = '';
+  saveBoards();
+});
+
+// ======================== QUICK STICKY (from toolbar) ========================
+$('quickStickyBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  // Create sticky in center of current view
+  const ctr = canvasContainer.getBoundingClientRect();
+  const wp = screenToWorld(ctr.left + ctr.width / 2, ctr.top + ctr.height / 2);
+  // Offset slightly if many stickies at center
+  const offset = (STATE.nodes.filter(n => n.type === 'sticky').length % 5) * 30;
+  const node = createNode('sticky', wp.x + offset, wp.y + offset);
+  pushHistory();
+  STATE.selected = [node.id];
+  updateSelection();
+  setTool('select');
+  setTimeout(() => enableEditing(node), 60);
+});
+
 // ======================== THEME ========================
 function toggleTheme() {
   STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
@@ -1911,9 +2074,11 @@ function openBoard(id) {
   STATE.future = [];
   STATE.selected = [];
   $('boardTitleDisplay').textContent = b.name;
+  STATE.boardBg = b.boardBg || '';
   dashboard.classList.remove('active');
   canvasScreen.classList.add('active');
   applyCamera();
+  applyBoardBg();
   updateZoomDisplay();
   renderAll();
   drawMinimap();
