@@ -293,7 +293,6 @@ function renderSticky(node) {
   const inner = document.createElement('div');
   inner.className = 'node-inner sticky-inner';
   const alpha = node.opacity !== undefined ? node.opacity : 1;
-  // opacity applies only to background, text stays fully visible
   inner.style.background = (node.color && node.color.startsWith('#')) ? hexToRgba(node.color, alpha) : node.color;
   inner.style.color = isLight(node.color) ? '#1a1a1a' : '#f0f0f0';
   inner.style.textAlign = node.textAlign || 'left';
@@ -301,14 +300,50 @@ function renderSticky(node) {
   inner.style.display = 'flex';
   inner.style.flexDirection = 'column';
   inner.style.whiteSpace = 'pre-wrap';
-  inner.contentEditable = 'false';
+
+  // FIX cursor: keep contentEditable always true so browser handles cursor naturally on click
+  inner.contentEditable = 'true';
   inner.innerHTML = node.html || (node.text ? escapeHtml(node.text) : '');
   if (!node.text && !node.html) inner.setAttribute('data-placeholder', 'Кликни чтобы писать...');
+
+  // Ctrl+B / I / U formatting
+  inner.addEventListener('keydown', ev => {
+    if (ev.ctrlKey || ev.metaKey) {
+      if (ev.key === 'b') { ev.preventDefault(); document.execCommand('bold'); }
+      if (ev.key === 'i') { ev.preventDefault(); document.execCommand('italic'); }
+      if (ev.key === 'u') { ev.preventDefault(); document.execCommand('underline'); }
+    }
+    if (ev.key === 'Escape') { inner.blur(); }
+    ev.stopPropagation(); // don't trigger canvas shortcuts while typing
+  });
+
   inner.addEventListener('input', () => {
     node.html = inner.innerHTML;
     node.text = inner.innerText;
     saveBoards();
   });
+
+  // Prevent drag when clicking inside the text area
+  inner.addEventListener('mousedown', e => {
+    // If already focused/editing — let browser handle it (cursor placement)
+    if (document.activeElement === inner) {
+      e.stopPropagation();
+      return;
+    }
+    // First click: select the node but don't drag
+    // Allow event to bubble to node wrapper for selection, then we focus
+  });
+
+  inner.addEventListener('focus', () => {
+    inner.removeAttribute('data-placeholder');
+  });
+  inner.addEventListener('blur', () => {
+    node.html = inner.innerHTML;
+    node.text = inner.innerText;
+    if (!node.text && !node.html) inner.setAttribute('data-placeholder', 'Кликни чтобы писать...');
+    saveBoards();
+  });
+
   return inner;
 }
 
@@ -602,14 +637,6 @@ function onNodeMouseDown(e, id) {
 
   STATE.dragging = { nodeIds: ids, startX, startY, origPositions, moved: false, nodeId: id };
   pushHistory();
-
-  // Sticky: single click activates editing — but DON'T force cursor to end
-  // so the user can click anywhere to position cursor naturally
-  if (node.type === 'sticky' && !e.ctrlKey && !e.metaKey) {
-    STATE.dragging._pendingEdit = true;
-    STATE.dragging._clickX = e.clientX;
-    STATE.dragging._clickY = e.clientY;
-  }
 }
 
 function onNodeDblClick(e, id) {
@@ -637,30 +664,25 @@ function enableEditing(node) {
   const el = document.getElementById('node-' + node.id);
   if (!el) return;
 
-  if (node.type === 'sticky' || node.type === 'text') {
-    const inner = el.querySelector('.sticky-inner, .text-inner');
+  if (node.type === 'sticky') {
+    // Sticky is always contentEditable — just focus it
+    const inner = el.querySelector('.sticky-inner');
+    if (inner) inner.focus();
+  } else if (node.type === 'text') {
+    const inner = el.querySelector('.text-inner');
     if (inner) {
       inner.contentEditable = 'true';
-      // Restore rich HTML if available
-      if (node.html) inner.innerHTML = node.html;
-      else inner.innerHTML = node.text ? escapeHtml(node.text) : '';
       inner.focus();
-      // Don't override cursor position — browser places it where user clicked
-
-      // Ctrl+B bold, Ctrl+I italic, Ctrl+U underline — native execCommand
-      const onKeyDown = ev => {
+      inner.addEventListener('keydown', ev => {
         if (ev.ctrlKey || ev.metaKey) {
           if (ev.key === 'b') { ev.preventDefault(); document.execCommand('bold'); }
           if (ev.key === 'i') { ev.preventDefault(); document.execCommand('italic'); }
           if (ev.key === 'u') { ev.preventDefault(); document.execCommand('underline'); }
         }
-        // Escape stops editing
-        if (ev.key === 'Escape') { inner.blur(); }
-      };
-      inner.addEventListener('keydown', onKeyDown);
-
+        if (ev.key === 'Escape') inner.blur();
+        ev.stopPropagation();
+      });
       inner.addEventListener('blur', () => {
-        inner.removeEventListener('keydown', onKeyDown);
         node.html = inner.innerHTML;
         node.text = inner.innerText;
         inner.contentEditable = 'false';
@@ -696,10 +718,11 @@ canvasContainer.addEventListener('mousedown', e => {
   }
 
   if (e.button === 0 && STATE.tool === 'select') {
-    // Box select start (if clicking empty)
+    // Box select start only when clicking truly empty canvas
     const target = e.target;
     const onNode = target.closest('.node');
-    if (!onNode) {
+    const onDot  = target.classList.contains('conn-dot');
+    if (!onNode && !onDot) {
       clearSelection();
       const rect = canvasContainer.getBoundingClientRect();
       STATE.boxSelect = { startX: e.clientX - rect.left, startY: e.clientY - rect.top };
@@ -772,12 +795,7 @@ document.addEventListener('mousemove', e => {
     return;
   }
 
-  // Connecting
-  if (STATE.connecting) {
-    const wp = screenToWorld(e.clientX, e.clientY);
-    updateTempLine(wp.x, wp.y);
-    return;
-  }
+  // Connecting is handled by its own listeners in startConnect
 
   // Box select
   if (STATE.boxSelect) {
@@ -802,16 +820,8 @@ document.addEventListener('mouseup', e => {
   }
 
   if (STATE.dragging) {
-    const wasPendingEdit = STATE.dragging._pendingEdit;
-    const dragNodeId = STATE.dragging.nodeId;
-    const moved = STATE.dragging.moved;
-    if (moved) saveBoards();
+    if (STATE.dragging.moved) saveBoards();
     STATE.dragging = null;
-    // If sticky was clicked (not dragged) — enable editing with cursor at end
-    if (wasPendingEdit && !moved) {
-      const n = STATE.nodes.find(x => x.id === dragNodeId);
-      if (n) enableEditing(n);
-    }
     return;
   }
 
@@ -821,32 +831,7 @@ document.addEventListener('mouseup', e => {
     return;
   }
 
-  if (STATE.connecting) {
-    // Check if released on a node
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const nodeEl = el && el.closest('.node');
-    if (nodeEl) {
-      const toId = nodeEl.id.replace('node-', '');
-      if (toId !== STATE.connecting.fromId) {
-        const wp = screenToWorld(e.clientX, e.clientY);
-        const toNode = STATE.nodes.find(n => n.id === toId);
-        const toSide = getClosestSide(toNode, wp.x, wp.y);
-        pushHistory();
-        STATE.connections.push({
-          id: uid(),
-          fromId: STATE.connecting.fromId,
-          fromSide: STATE.connecting.fromSide,
-          toId,
-          toSide,
-        });
-        saveBoards();
-      }
-    }
-    removeTempLine();
-    STATE.connecting = null;
-    renderConnections();
-    return;
-  }
+  // Connecting is handled by its own listeners in startConnect
 
   if (STATE.boxSelect) {
     applyBoxSelect();
@@ -937,14 +922,16 @@ function applyBoxSelect() {
   const by = parseFloat(boxSelectEl.style.top);
   const bw = parseFloat(boxSelectEl.style.width);
   const bh = parseFloat(boxSelectEl.style.height);
+  // Ignore tiny accidental clicks
+  if (bw < 5 && bh < 5) return;
   const wp1 = screenToWorld(bx + canvasContainer.getBoundingClientRect().left, by + canvasContainer.getBoundingClientRect().top);
   const wp2 = screenToWorld(bx + bw + canvasContainer.getBoundingClientRect().left, by + bh + canvasContainer.getBoundingClientRect().top);
   const minX = Math.min(wp1.x, wp2.x), maxX = Math.max(wp1.x, wp2.x);
   const minY = Math.min(wp1.y, wp2.y), maxY = Math.max(wp1.y, wp2.y);
 
-  // Select only nodes FULLY enclosed in the box
+  // Select nodes that intersect with the box (standard behavior)
   STATE.selected = STATE.nodes
-    .filter(n => n.x >= minX && n.x + n.w <= maxX && n.y >= minY && n.y + n.h <= maxY)
+    .filter(n => n.x + n.w > minX && n.x < maxX && n.y + n.h > minY && n.y < maxY)
     .map(n => n.id);
   updateSelection();
   if (STATE.selected.length === 1) showPropsForSelected();
