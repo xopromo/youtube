@@ -416,6 +416,42 @@ function updateNodeEl(node) {
   else el.classList.remove('selected');
 }
 
+// Update shape SVG in place without DOM re-render (prevents flicker)
+function updateShapeInPlace(node) {
+  const el = document.getElementById('node-' + node.id);
+  if (!el) return;
+  if (node.type === 'rect') {
+    const rect = el.querySelector('rect');
+    if (rect) {
+      rect.setAttribute('width', node.w - 4);
+      rect.setAttribute('height', node.h - 4);
+    }
+    const svg = el.querySelector('svg');
+    if (svg) svg.setAttribute('viewBox', `0 0 ${node.w} ${node.h}`);
+  } else if (node.type === 'circle') {
+    const ellipse = el.querySelector('ellipse');
+    if (ellipse) {
+      ellipse.setAttribute('cx', node.w / 2);
+      ellipse.setAttribute('cy', node.h / 2);
+      ellipse.setAttribute('rx', node.w / 2 - 2);
+      ellipse.setAttribute('ry', node.h / 2 - 2);
+    }
+    const svg = el.querySelector('svg');
+    if (svg) svg.setAttribute('viewBox', `0 0 ${node.w} ${node.h}`);
+  } else if (node.type === 'diamond') {
+    const poly = el.querySelector('polygon');
+    if (poly) {
+      const cx = node.w / 2, cy = node.h / 2;
+      poly.setAttribute('points', `${cx},2 ${node.w-2},${cy} ${cx},${node.h-2} 2,${cy}`);
+    }
+    const svg = el.querySelector('svg');
+    if (svg) svg.setAttribute('viewBox', `0 0 ${node.w} ${node.h}`);
+  } else if (node.type === 'frame') {
+    const inner = el.querySelector('.frame-inner');
+    if (inner) { inner.style.width = node.w + 'px'; inner.style.height = node.h + 'px'; }
+  }
+}
+
 // ======================== CONNECTIONS ========================
 function renderConnections() {
   // Clear old paths
@@ -490,7 +526,7 @@ function selectNode(id, additive = false) {
     STATE.selected = [id];
   }
   updateSelection();
-  showPropsForSelected();
+  // Props panel opens only on double-click, not on selection
 }
 
 function clearSelection() {
@@ -543,8 +579,13 @@ function onNodeMouseDown(e, id) {
     if (n) origPositions[nid] = { x: n.x, y: n.y };
   });
 
-  STATE.dragging = { nodeIds: ids, startX, startY, origPositions, moved: false };
+  STATE.dragging = { nodeIds: ids, startX, startY, origPositions, moved: false, nodeId: id };
   pushHistory();
+
+  // For stickies: enable editing immediately on click (cursor at end)
+  if (node.type === 'sticky' && !e.ctrlKey && !e.metaKey) {
+    STATE.dragging._pendingEdit = true;
+  }
 }
 
 function onNodeDblClick(e, id) {
@@ -552,6 +593,7 @@ function onNodeDblClick(e, id) {
   const node = STATE.nodes.find(n => n.id === id);
   if (!node) return;
   enableEditing(node);
+  showPropsForSelected();
 }
 
 function onNodeContextMenu(e, id) {
@@ -689,7 +731,7 @@ document.addEventListener('mousemove', e => {
       n.w = Math.max(80, STATE.resizing.origW + dx);
       n.h = Math.max(60, STATE.resizing.origH + dy);
       updateNodeEl(n);
-      renderNode(n); // re-render for shape updates
+      updateShapeInPlace(n);
       renderConnections();
     }
     return;
@@ -725,8 +767,16 @@ document.addEventListener('mouseup', e => {
   }
 
   if (STATE.dragging) {
-    if (STATE.dragging.moved) saveBoards();
+    const wasPendingEdit = STATE.dragging._pendingEdit;
+    const dragNodeId = STATE.dragging.nodeId;
+    const moved = STATE.dragging.moved;
+    if (moved) saveBoards();
     STATE.dragging = null;
+    // If sticky was clicked (not dragged) — enable editing with cursor at end
+    if (wasPendingEdit && !moved) {
+      const n = STATE.nodes.find(x => x.id === dragNodeId);
+      if (n) enableEditing(n);
+    }
     return;
   }
 

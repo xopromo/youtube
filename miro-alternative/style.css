@@ -394,10 +394,10 @@ body {
 }
 .node.selected .node-resize-handle { opacity: 1; }
 
-/* Connection dots */
+/* Connect tool: dots appear only in connect-tool mode */
 .conn-dot {
   position: absolute;
-  width: 10px; height: 10px;
+  width: 12px; height: 12px;
   border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--surface);
@@ -406,11 +406,12 @@ body {
   cursor: crosshair;
   z-index: 20;
 }
-.node:hover .conn-dot, .conn-dot:hover { opacity: 1; }
-.conn-dot.top    { top: -5px;    left: 50%;  transform: translateX(-50%); }
-.conn-dot.right  { right: -5px;  top: 50%;   transform: translateY(-50%); }
-.conn-dot.bottom { bottom: -5px; left: 50%;  transform: translateX(-50%); }
-.conn-dot.left   { left: -5px;   top: 50%;   transform: translateY(-50%); }
+.tool-connect .node:hover .conn-dot { opacity: 1; }
+.conn-dot:hover { opacity: 1 !important; transform: translateX(-50%) scale(1.3); }
+.conn-dot.top    { top: -6px;    left: 50%;  transform: translateX(-50%); }
+.conn-dot.right  { right: -6px;  top: 50%;   transform: translateY(-50%); }
+.conn-dot.bottom { bottom: -6px; left: 50%;  transform: translateX(-50%); }
+.conn-dot.left   { left: -6px;   top: 50%;   transform: translateY(-50%); }
 
 /* ---- STICKY ---- */
 .sticky-inner {
@@ -423,13 +424,6 @@ body {
   min-height: 100px;
 }
 .sticky-inner[contenteditable="true"] { outline: none; }
-.sticky-inner::before {
-  content: '';
-  display: block;
-  height: 24px;
-  background: rgba(0,0,0,0.08);
-  margin: -12px -12px 8px -12px;
-}
 
 /* ---- CARD ---- */
 .card-inner {
