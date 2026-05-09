@@ -259,12 +259,17 @@ function renderNode(node) {
     rh.addEventListener('mousedown', e => startResize(e, node.id));
   }
 
-  // Connection dots (except frame)
+  // Connection handles — visible on hover in any mode, drag starts connection
   if (node.type !== 'frame') {
     ['top','right','bottom','left'].forEach(side => {
       const dot = document.createElement('div');
       dot.className = 'conn-dot ' + side;
-      dot.addEventListener('mousedown', e => { e.stopPropagation(); startConnect(e, node.id, side); });
+      dot.title = 'Потяни для создания связи';
+      dot.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        startConnect(e, node.id, side);
+      });
       wrap.appendChild(dot);
     });
   }
@@ -278,11 +283,18 @@ function renderNode(node) {
   canvasWorld.insertBefore(wrap, connSvg);
 }
 
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function renderSticky(node) {
   const inner = document.createElement('div');
   inner.className = 'node-inner sticky-inner';
-  inner.style.background = node.color;
-  inner.style.opacity = node.opacity !== undefined ? node.opacity : 1;
+  const alpha = node.opacity !== undefined ? node.opacity : 1;
+  // opacity applies only to background, text stays fully visible
+  inner.style.background = (node.color && node.color.startsWith('#')) ? hexToRgba(node.color, alpha) : node.color;
   inner.style.color = isLight(node.color) ? '#1a1a1a' : '#f0f0f0';
   inner.style.textAlign = node.textAlign || 'left';
   inner.style.justifyContent = node.verticalAlign === 'center' ? 'center' : node.verticalAlign === 'bottom' ? 'flex-end' : 'flex-start';
@@ -570,6 +582,8 @@ function selectAll() {
 function onNodeMouseDown(e, id) {
   if (e.button !== 0) return;
   if (STATE.tool === 'connect') return;
+  // Don't start drag if clicked on connection dot
+  if (e.target.classList.contains('conn-dot')) return;
   e.stopPropagation();
 
   const node = STATE.nodes.find(n => n.id === id);
@@ -1226,7 +1240,9 @@ function buildPropsBody(node) {
       node.opacity = parseFloat(opSlider.value);
       opVal.textContent = Math.round(node.opacity * 100) + '%';
       const inner = document.querySelector('#node-' + node.id + ' .sticky-inner');
-      if (inner) inner.style.opacity = node.opacity;
+      if (inner && node.color && node.color.startsWith('#')) {
+        inner.style.background = hexToRgba(node.color, node.opacity);
+      }
       saveBoards();
     });
     opWrap.appendChild(opSlider); opWrap.appendChild(opVal);
