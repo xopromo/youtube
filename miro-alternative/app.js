@@ -290,19 +290,25 @@ function hexToRgba(hex, alpha) {
 }
 
 function renderSticky(node) {
+  // Wrap: display:table so table-cell vertical-align works without breaking inline bold
+  const wrap = document.createElement('div');
+  wrap.className = 'node-inner sticky-wrap';
+
   const inner = document.createElement('div');
-  inner.className = 'node-inner sticky-inner';
+  inner.className = 'sticky-inner';
   const alpha = node.opacity !== undefined ? node.opacity : 1;
   inner.style.background = (node.color && node.color.startsWith('#')) ? hexToRgba(node.color, alpha) : node.color;
   inner.style.color = isLight(node.color) ? '#1a1a1a' : '#f0f0f0';
   inner.style.textAlign = node.textAlign || 'left';
-  inner.style.justifyContent = node.verticalAlign === 'center' ? 'center' : node.verticalAlign === 'bottom' ? 'flex-end' : 'flex-start';
-  inner.style.display = 'flex';
-  inner.style.flexDirection = 'column';
   inner.style.whiteSpace = 'pre-wrap';
+  inner.style.display = 'block';
+  // Vertical align: use paddingTop trick (top=normal, center=auto padding, bottom=margin-top auto)
+  const va = node.verticalAlign || 'top';
+  inner.dataset.valign = va;
+  applyVerticalAlign(inner, va);
 
-  // FIX cursor: keep contentEditable always true so browser handles cursor naturally on click
   inner.contentEditable = 'true';
+  inner.setAttribute('spellcheck', 'false');
   inner.innerHTML = node.html || (node.text ? escapeHtml(node.text) : '');
   if (!node.text && !node.html) inner.setAttribute('data-placeholder', 'Кликни чтобы писать...');
 
@@ -340,16 +346,26 @@ function renderSticky(node) {
   inner.addEventListener('blur', () => {
     node.html = inner.innerHTML;
     node.text = inner.innerText;
-    if (!node.text && !node.html) inner.setAttribute('data-placeholder', 'Кликни чтобы писать...');
+    if (!node.text.trim() && !node.html.trim()) inner.setAttribute('data-placeholder', 'Кликни чтобы писать...');
     saveBoards();
   });
 
-  return inner;
+  wrap.appendChild(inner);
+  return wrap;
 }
 
 function escapeHtml(t) {
   return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 }
+
+function applyVerticalAlign(inner, va) {
+  // Use line-height / table-cell trick — does NOT break inline bold/italic
+  inner.style.display = 'table-cell';
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  inner.style.verticalAlign = va === 'center' ? 'middle' : va === 'bottom' ? 'bottom' : 'top';
+}
+
 
 function renderCard(node) {
   const inner = document.createElement('div');
@@ -743,6 +759,15 @@ canvasContainer.addEventListener('dblclick', e => {
   const wp = screenToWorld(e.clientX, e.clientY);
   createNodeByTool(STATE.tool, wp.x, wp.y);
 });
+
+canvasContainer.addEventListener('mousedown', e => {
+  // Blur any active sticky editor when clicking outside a sticky
+  const active = document.activeElement;
+  if (active && active.classList.contains('sticky-inner')) {
+    const clickedInside = active.closest('.node') === e.target.closest('.node');
+    if (!clickedInside) active.blur();
+  }
+}, true); // capture phase so it fires before node handlers
 
 canvasContainer.addEventListener('click', e => {
   if (e.target === canvasContainer || e.target === canvasWorld) {
@@ -1293,7 +1318,7 @@ function buildPropsBody(node) {
         valignWrap.querySelectorAll('button').forEach(b => b.style.background = '');
         btn.style.background = 'var(--accent-glow)';
         const inner = document.querySelector('#node-' + node.id + ' .sticky-inner');
-        if (inner) inner.style.justifyContent = val === 'center' ? 'center' : val === 'bottom' ? 'flex-end' : 'flex-start';
+        if (inner) applyVerticalAlign(inner, val);
         saveBoards();
       });
       valignWrap.appendChild(btn);
