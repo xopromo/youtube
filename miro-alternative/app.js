@@ -589,15 +589,7 @@ function onNodeMouseDown(e, id) {
   const node = STATE.nodes.find(n => n.id === id);
   if (!node) return;
 
-  // Bring to front (except frames)
-  if (node.type !== 'frame') {
-    const idx = STATE.nodes.indexOf(node);
-    STATE.nodes.splice(idx, 1);
-    STATE.nodes.push(node);
-    const el = document.getElementById('node-' + id);
-    if (el) canvasWorld.appendChild(el);
-  }
-
+  // Issue #3: do NOT bring to front on click — preserve z-order
   selectNode(id, e.ctrlKey || e.metaKey);
 
   const startX = e.clientX, startY = e.clientY;
@@ -611,9 +603,12 @@ function onNodeMouseDown(e, id) {
   STATE.dragging = { nodeIds: ids, startX, startY, origPositions, moved: false, nodeId: id };
   pushHistory();
 
-  // For stickies: enable editing immediately on click (cursor at end)
+  // Sticky: single click activates editing — but DON'T force cursor to end
+  // so the user can click anywhere to position cursor naturally
   if (node.type === 'sticky' && !e.ctrlKey && !e.metaKey) {
     STATE.dragging._pendingEdit = true;
+    STATE.dragging._clickX = e.clientX;
+    STATE.dragging._clickY = e.clientY;
   }
 }
 
@@ -646,16 +641,11 @@ function enableEditing(node) {
     const inner = el.querySelector('.sticky-inner, .text-inner');
     if (inner) {
       inner.contentEditable = 'true';
-      // Restore rich HTML if available, otherwise plain text
+      // Restore rich HTML if available
       if (node.html) inner.innerHTML = node.html;
       else inner.innerHTML = node.text ? escapeHtml(node.text) : '';
       inner.focus();
-      // Cursor to end
-      const range = document.createRange();
-      range.selectNodeContents(inner);
-      range.collapse(false);
-      window.getSelection().removeAllRanges();
-      window.getSelection().addRange(range);
+      // Don't override cursor position — browser places it where user clicked
 
       // Ctrl+B bold, Ctrl+I italic, Ctrl+U underline — native execCommand
       const onKeyDown = ev => {
@@ -877,6 +867,9 @@ function startResize(e, nodeId) {
 
 function startConnect(e, fromId, fromSide) {
   e.preventDefault();
+  e.stopPropagation();
+  // Cancel any drag that may have started
+  STATE.dragging = null;
   STATE.connecting = { fromId, fromSide };
   const n = STATE.nodes.find(x => x.id === fromId);
   const fp = getSidePoint(n, fromSide);
@@ -884,13 +877,41 @@ function startConnect(e, fromId, fromSide) {
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   line.id = 'tempLine';
   line.setAttribute('stroke', '#7c6af5');
-  line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-width', '2.5');
   line.setAttribute('stroke-dasharray', '6 3');
   line.setAttribute('x1', fp.x); line.setAttribute('y1', fp.y);
   line.setAttribute('x2', fp.x); line.setAttribute('y2', fp.y);
   connSvg.appendChild(line);
   STATE.connecting.tempLine = line;
   STATE.connecting.fp = fp;
+
+  // Listen on document for mousemove/mouseup during connection drag
+  const onMove = ev => {
+    const wp = screenToWorld(ev.clientX, ev.clientY);
+    updateTempLine(wp.x, wp.y);
+  };
+  const onUp = ev => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    const el = document.elementFromPoint(ev.clientX, ev.clientY);
+    const nodeEl = el && el.closest('.node');
+    if (nodeEl) {
+      const toId = nodeEl.id.replace('node-', '');
+      if (toId && toId !== fromId) {
+        const wp = screenToWorld(ev.clientX, ev.clientY);
+        const toNode = STATE.nodes.find(n => n.id === toId);
+        const toSide = getClosestSide(toNode, wp.x, wp.y);
+        pushHistory();
+        STATE.connections.push({ id: uid(), fromId, fromSide, toId, toSide });
+        saveBoards();
+      }
+    }
+    removeTempLine();
+    STATE.connecting = null;
+    renderConnections();
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 }
 
 function updateTempLine(wx, wy) {
@@ -921,8 +942,9 @@ function applyBoxSelect() {
   const minX = Math.min(wp1.x, wp2.x), maxX = Math.max(wp1.x, wp2.x);
   const minY = Math.min(wp1.y, wp2.y), maxY = Math.max(wp1.y, wp2.y);
 
+  // Select only nodes FULLY enclosed in the box
   STATE.selected = STATE.nodes
-    .filter(n => n.x + n.w > minX && n.x < maxX && n.y + n.h > minY && n.y < maxY)
+    .filter(n => n.x >= minX && n.x + n.w <= maxX && n.y >= minY && n.y + n.h <= maxY)
     .map(n => n.id);
   updateSelection();
   if (STATE.selected.length === 1) showPropsForSelected();
