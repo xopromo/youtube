@@ -1,0 +1,41 @@
+name: Telegram Monitor
+
+on:
+  schedule:
+    # Запускаемся каждый час в :00
+    - cron: "0 * * * *"
+  # Позволяет запустить вручную из GitHub
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: ./telegram-monitoring
+        run: pip install -r requirements.txt
+
+      - name: Run Telegram Monitor
+        working-directory: ./telegram-monitoring
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          YOUR_CHAT_ID: ${{ secrets.YOUR_CHAT_ID }}
+          MONITORED_CHAT_ID_1: ${{ secrets.MONITORED_CHAT_ID_1 }}
+        run: python monitor.py
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: monitor-logs
+          path: telegram-monitoring/
+          retention-days: 7
