@@ -3,490 +3,554 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sky Bird - Простая Игра</title>
+    <title>Dungeon Depths — Roguelike</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Arial', sans-serif;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .container {
-            text-align: center;
-        }
-
-        .game-wrapper {
-            position: relative;
-            width: 400px;
-            height: 600px;
-            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
-            border: 3px solid #333;
-            overflow: hidden;
-            margin: 20px auto;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        #bird {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            background: #FFD700;
-            border-radius: 50%;
-            left: 50px;
-            top: 250px;
-            box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.2);
-        }
-
-        .bird-eye {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: black;
-            border-radius: 50%;
-            right: 8px;
-            top: 8px;
-        }
-
-        .pipe {
-            position: absolute;
-            width: 60px;
-            background: #2ecc71;
-            border: 2px solid #27ae60;
-        }
-
-        .pipe.top {
-            border-bottom: 4px solid rgba(0, 0, 0, 0.2);
-        }
-
-        .pipe.bottom {
-            border-top: 4px solid rgba(0, 0, 0, 0.2);
-        }
-
-        .coin {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: radial-gradient(circle at 30% 30%, #FFE5B4, #FFD700);
-            border-radius: 50%;
-            border: 2px solid #DAA520;
-        }
-
-        .cloud {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 40px;
-            user-select: none;
-        }
-
-        .ui {
-            position: absolute;
-            top: 10px;
-            width: 100%;
-            padding: 10px;
-            display: flex;
-            justify-content: space-between;
-            color: #333;
-            font-weight: bold;
-            z-index: 10;
-        }
-
-        .score, .coins {
-            background: rgba(255, 255, 255, 0.8);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-
-        .game-over {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.95);
-            color: white;
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            z-index: 100;
-            min-width: 300px;
-        }
-
-        .game-over h2 {
-            font-size: 36px;
-            margin-bottom: 20px;
-            color: #ff6b6b;
-        }
-
-        .game-over p {
-            font-size: 18px;
-            margin: 10px 0;
-        }
-
-        .game-over .final-score {
-            font-size: 24px;
-            color: #FFD700;
-            margin: 20px 0;
-            font-weight: bold;
-        }
-
-        .game-over button {
-            margin-top: 20px;
-            padding: 12px 30px;
-            font-size: 18px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .game-over button:hover {
-            background: #764ba2;
-        }
-
-        .instructions {
-            color: white;
-            margin-top: 20px;
-            font-size: 14px;
-        }
-
-        .instructions p {
-            margin: 5px 0;
+            padding: 16px;
         }
 
         h1 {
-            color: white;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            color: #e74c3c;
+            font-size: 24px;
+            letter-spacing: 6px;
+            text-shadow: 0 0 16px #e74c3c88;
+            margin-bottom: 14px;
         }
 
-        .start-button {
-            padding: 12px 30px;
-            font-size: 16px;
-            background: #2ecc71;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            margin-bottom: 20px;
-            transition: background 0.3s;
+        .layout {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
         }
 
-        .start-button:hover {
-            background: #27ae60;
+        canvas {
+            border: 2px solid #2a2a2a;
+            display: block;
+            image-rendering: pixelated;
         }
 
-        .start-button:disabled {
-            background: #95a5a6;
-            cursor: not-allowed;
+        .sidebar {
+            width: 230px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
+
+        .panel {
+            background: #111;
+            border: 1px solid #2a2a2a;
+            padding: 10px 12px;
+        }
+
+        .panel h3 {
+            font-size: 10px;
+            color: #e74c3c;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #1e1e1e;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+        }
+
+        .stat { display: flex; justify-content: space-between; font-size: 12px; margin: 3px 0; }
+        .sl { color: #666; }
+        .sv { color: #ccc; }
+
+        .bar { height: 6px; background: #1a1a1a; margin-top: 5px; }
+        .bar-fill { height: 100%; transition: width .15s, background .15s; }
+
+        .inv-item {
+            font-size: 12px; padding: 3px 4px; margin: 2px 0;
+            cursor: pointer; border: 1px solid transparent;
+        }
+        .inv-item:hover { border-color: #333; background: #161616; }
+        .inv-empty { color: #444; font-size: 12px; }
+
+        .log { height: 160px; overflow-y: auto; font-size: 11px; line-height: 1.7; }
+        .log::-webkit-scrollbar { width: 4px; }
+        .log::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+        .md  { color: #e74c3c; }
+        .mk  { color: #e74c3c88; }
+        .mp  { color: #f39c12; }
+        .ml  { color: #9b59b6; }
+        .ms  { color: #3498db; }
+        .mi  { color: #555; }
+
+        .ctrl { font-size: 11px; color: #444; line-height: 1.9; }
+        .ctrl b { color: #888; }
+
+        .overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.92);
+            justify-content: center; align-items: center; z-index: 99;
+        }
+        .overlay.on { display: flex; }
+
+        .modal {
+            background: #111; border: 2px solid #333;
+            padding: 36px 52px; text-align: center; min-width: 300px;
+        }
+        .modal h2 { font-size: 32px; margin-bottom: 18px; }
+        .modal p { font-size: 14px; color: #666; margin: 5px 0; }
+        .modal p span { color: #ccc; }
+
+        .btn {
+            margin-top: 22px; padding: 10px 28px;
+            background: #e74c3c; color: #fff; border: none;
+            cursor: pointer; font-family: inherit; font-size: 14px;
+            letter-spacing: 2px; text-transform: uppercase;
+        }
+        .btn:hover { background: #c0392b; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🐦 Sky Bird</h1>
-        <button class="start-button" id="startBtn">НАЧАТЬ ИГРУ</button>
+<h1>⚔ DUNGEON DEPTHS ⚔</h1>
 
-        <div class="game-wrapper">
-            <div class="ui">
-                <div class="score">Очки: <span id="score">0</span></div>
-                <div class="coins">💰 <span id="coins">0</span></div>
-            </div>
-            <div id="bird">
-                <div class="bird-eye"></div>
-            </div>
-            <div class="game-over" id="gameOver">
-                <h2>ИГРА ОКОНЧЕНА!</h2>
-                <p>Ты врезался в препятствие</p>
-                <div class="final-score">
-                    Очки: <span id="finalScore">0</span>
-                </div>
-                <div class="final-score" style="color: #FFD700;">
-                    Монеты: <span id="finalCoins">0</span>
-                </div>
-                <button onclick="location.reload()">СЫГРАТЬ ЕЩЕ</button>
-            </div>
+<div class="layout">
+    <canvas id="c" width="600" height="480"></canvas>
+
+    <div class="sidebar">
+
+        <div class="panel">
+            <h3>Герой</h3>
+            <div class="stat"><span class="sl">HP</span> <span class="sv"><span id="hp">30</span>/<span id="mhp">30</span></span></div>
+            <div class="bar"><div class="bar-fill" id="hpb"></div></div>
+            <div class="stat" style="margin-top:8px"><span class="sl">Атака</span>  <span class="sv" id="atk">5</span></div>
+            <div class="stat"><span class="sl">Защита</span> <span class="sv" id="def">1</span></div>
+            <div class="stat"><span class="sl">Уровень</span><span class="sv" id="lvl">1</span></div>
+            <div class="stat"><span class="sl">Опыт</span>   <span class="sv"><span id="xp">0</span>/<span id="xpn">20</span></span></div>
+            <div class="stat"><span class="sl">Этаж</span>   <span class="sv" id="fl">1</span></div>
+            <div class="stat"><span class="sl">Убийств</span><span class="sv" id="kl">0</span></div>
         </div>
 
-        <div class="instructions">
-            <p>⬆️ ПРОБЕЛ или КЛИК - летим вверх</p>
-            <p>⬇️ Гравитация тянет вниз</p>
-            <p>💰 Собирай монеты для бонусов</p>
-            <p>🚫 Избегай препятствий!</p>
+        <div class="panel">
+            <h3>Инвентарь &nbsp;<span style="color:#444;font-size:10px">[1–5 чтобы исп.]</span></h3>
+            <div id="inv"><div class="inv-empty">Пусто</div></div>
         </div>
+
+        <div class="panel">
+            <h3>Журнал</h3>
+            <div class="log" id="log"></div>
+        </div>
+
+        <div class="panel ctrl">
+            <h3>Управление</h3>
+            <b>WASD / ←↑↓→</b> — движение<br>
+            <b>1–5</b> — использовать предмет<br>
+            <b>.</b> — пропустить ход
+        </div>
+
     </div>
+</div>
 
-    <script>
-        const gameWrapper = document.querySelector('.game-wrapper');
-        const bird = document.getElementById('bird');
-        const gameOverScreen = document.getElementById('gameOver');
-        const scoreDisplay = document.getElementById('score');
-        const coinsDisplay = document.getElementById('coins');
-        const finalScoreDisplay = document.getElementById('finalScore');
-        const finalCoinsDisplay = document.getElementById('finalCoins');
-        const startBtn = document.getElementById('startBtn');
+<div class="overlay" id="ov">
+    <div class="modal">
+        <h2 id="mt"></h2>
+        <div id="ms"></div>
+        <button class="btn" onclick="newGame()">Играть снова</button>
+    </div>
+</div>
 
-        let gameRunning = false;
-        let birdY = 250;
-        let birdX = 50;
-        let velocityY = 0;
-        let score = 0;
-        let coins = 0;
-        const gravity = 0.6;
-        const jumpPower = -12;
-        const gameHeight = 600;
-        const gameWidth = 400;
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+const COLS = 50, ROWS = 30, TW = 12, TH = 16;
 
-        const pipes = [];
-        const coins_list = [];
+const T = { WALL:0, FLOOR:1, STAIR:2 };
 
-        class Pipe {
-            constructor() {
-                this.x = gameWidth;
-                this.width = 60;
-                this.gap = 120;
-                this.topHeight = Math.random() * (gameHeight - this.gap - 100) + 50;
-                this.bottomY = this.topHeight + this.gap;
-                this.passed = false;
-            }
+const ENEMIES = {
+    rat:   { char:'r', name:'Крыса',  hp:8,  atk:3,  def:0, xp:5,  col:'#a0522d', fl:1 },
+    goblin:{ char:'g', name:'Гоблин', hp:14, atk:5,  def:1, xp:12, col:'#27ae60', fl:1 },
+    skel:  { char:'s', name:'Скелет', hp:20, atk:7,  def:2, xp:20, col:'#bdc3c7', fl:2 },
+    troll: { char:'T', name:'Тролль', hp:34, atk:10, def:4, xp:35, col:'#8e44ad', fl:3 },
+    lich:  { char:'L', name:'Лич',    hp:48, atk:13, def:5, xp:55, col:'#2980b9', fl:4 },
+    dragon:{ char:'D', name:'Дракон', hp:80, atk:18, def:8, xp:100,col:'#e74c3c', fl:5 },
+};
 
-            draw() {
-                // Top pipe
-                const topPipe = document.createElement('div');
-                topPipe.className = 'pipe top';
-                topPipe.style.left = this.x + 'px';
-                topPipe.style.height = this.topHeight + 'px';
-                topPipe.style.top = '0px';
-                topPipe.id = 'pipe-' + Math.random();
-                this.topId = topPipe.id;
+const ITEMS = {
+    potion:{ char:'!', name:'Зелье HP',    col:'#e91e8c', use:'heal' },
+    sword: { char:'/', name:'Меч',         col:'#4fc3f7', use:'atk'  },
+    shield:{ char:'[', name:'Щит',         col:'#81c784', use:'def'  },
+    scroll:{ char:'?', name:'Свиток огня', col:'#fff176', use:'bomb' },
+};
 
-                // Bottom pipe
-                const bottomPipe = document.createElement('div');
-                bottomPipe.className = 'pipe bottom';
-                bottomPipe.style.left = this.x + 'px';
-                bottomPipe.style.height = (gameHeight - this.bottomY) + 'px';
-                bottomPipe.style.top = this.bottomY + 'px';
-                bottomPipe.id = 'pipe-' + Math.random();
-                this.bottomId = bottomPipe.id;
+// ─── STATE ─────────────────────────────────────────────────────────────────
+let G, canvas, ctx;
 
-                gameWrapper.appendChild(topPipe);
-                gameWrapper.appendChild(bottomPipe);
-            }
+function mkPlayer() {
+    return { x:0,y:0, hp:30,mhp:30, atk:5,def:1,
+             lvl:1,xp:0,xpn:20, inv:[], kills:0, over:false };
+}
 
-            update() {
-                this.x -= 5;
-            }
+function mkState() {
+    return { floor:1, map:[], exp:[], vis:[], en:[], it:[], msgs:[], turn:0, p:mkPlayer() };
+}
 
-            isOffscreen() {
-                return this.x + this.width < 0;
-            }
+// ─── DUNGEON ───────────────────────────────────────────────────────────────
+function gen() {
+    const map=[], exp=[], vis=[];
+    for(let y=0;y<ROWS;y++){
+        map.push(new Uint8Array(COLS));
+        exp.push(new Uint8Array(COLS));
+        vis.push(new Uint8Array(COLS));
+    }
 
-            collidesWith(birdX, birdY, birdSize = 30) {
-                const birdRight = birdX + birdSize;
-                const birdBottom = birdY + birdSize;
+    const rooms=[];
+    const want = 7 + G.floor;
 
-                if (birdX < this.x + this.width && birdRight > this.x) {
-                    if (birdY < this.topHeight || birdBottom > this.bottomY) {
-                        return true;
-                    }
-                }
-                return false;
-            }
+    for(let a=0;a<200&&rooms.length<want;a++){
+        const w=5+rng(7), h=4+rng(5);
+        const rx=1+rng(COLS-w-2), ry=1+rng(ROWS-h-2);
+        const r={x:rx,y:ry,w,h};
 
-            removeFromDOM() {
-                const top = document.getElementById(this.topId);
-                const bottom = document.getElementById(this.bottomId);
-                if (top) top.remove();
-                if (bottom) bottom.remove();
+        if(rooms.some(o=> rx<o.x+o.w+1 && rx+w+1>o.x && ry<o.y+o.h+1 && ry+h+1>o.y)) continue;
+
+        for(let y=ry;y<ry+h;y++) for(let x=rx;x<rx+w;x++) map[y][x]=T.FLOOR;
+
+        if(rooms.length>0){
+            const p=rooms[rooms.length-1];
+            const x1=~~(p.x+p.w/2), y1=~~(p.y+p.h/2);
+            const x2=~~(rx+w/2),    y2=~~(ry+h/2);
+            if(Math.random()<.5){ hline(map,x1,x2,y1); vline(map,y1,y2,x2); }
+            else                 { vline(map,y1,y2,x1); hline(map,x1,x2,y2); }
+        }
+        rooms.push(r);
+    }
+
+    return {map,exp,vis,rooms};
+}
+
+function hline(map,x1,x2,y){ for(let x=Math.min(x1,x2);x<=Math.max(x1,x2);x++) if(inb(x,y)) map[y][x]=T.FLOOR; }
+function vline(map,y1,y2,x){ for(let y=Math.min(y1,y2);y<=Math.max(y1,y2);y++) if(inb(x,y)) map[y][x]=T.FLOOR; }
+function rc(r){ return {x:~~(r.x+r.w/2), y:~~(r.y+r.h/2)}; }
+function inb(x,y){ return x>=0&&x<COLS&&y>=0&&y<ROWS; }
+function rng(n){ return Math.floor(Math.random()*n); }
+
+function setupFloor(){
+    const {map,exp,vis,rooms} = gen();
+    G.map=map; G.exp=exp; G.vis=vis; G.en=[]; G.it=[];
+
+    const s=rc(rooms[0]);
+    G.p.x=s.x; G.p.y=s.y;
+
+    const e=rc(rooms[rooms.length-1]);
+    map[e.y][e.x]=T.STAIR;
+
+    const pool=Object.keys(ENEMIES).filter(k=>ENEMIES[k].fl<=G.floor);
+    for(let i=1;i<rooms.length-1;i++){
+        const cnt=1+rng(3);
+        for(let j=0;j<cnt;j++) spawnEnemy(rooms[i],pool);
+        if(Math.random()<.55) spawnItem(rooms[i]);
+    }
+    spawnItem(rooms[0],'potion');
+
+    fov();
+}
+
+function spawnEnemy(room,pool){
+    for(let a=0;a<20;a++){
+        const x=room.x+1+rng(room.w-2), y=room.y+1+rng(room.h-2);
+        if(!anyAt(x,y)){
+            const key=pool[rng(pool.length)], t=ENEMIES[key];
+            const bonus=G.floor*2;
+            G.en.push({x,y,key,hp:t.hp+bonus,mhp:t.hp+bonus,atk:t.atk+~~(G.floor*.5),def:t.def});
+            return;
+        }
+    }
+}
+
+function spawnItem(room,force=null){
+    for(let a=0;a<20;a++){
+        const x=room.x+1+rng(room.w-2), y=room.y+1+rng(room.h-2);
+        if(G.map[y][x]===T.FLOOR && !itemAt(x,y)){
+            const keys=Object.keys(ITEMS);
+            G.it.push({x,y,key:force||keys[rng(keys.length)]});
+            return;
+        }
+    }
+}
+
+// ─── FOV ───────────────────────────────────────────────────────────────────
+function fov(){
+    for(let y=0;y<ROWS;y++) G.vis[y].fill(0);
+    const {x:px,y:py}=G.p, R=7;
+    for(let a=0;a<360;a+=2){
+        const rad=a*Math.PI/180;
+        let rx=px+.5, ry=py+.5;
+        for(let s=0;s<R;s++){
+            const tx=~~rx, ty=~~ry;
+            if(!inb(tx,ty)) break;
+            G.vis[ty][tx]=1; G.exp[ty][tx]=1;
+            if(G.map[ty][tx]===T.WALL) break;
+            rx+=Math.cos(rad)*.5; ry+=Math.sin(rad)*.5;
+        }
+    }
+}
+
+// ─── LOOKUPS ───────────────────────────────────────────────────────────────
+function anyAt(x,y){ return (G.p.x===x&&G.p.y===y) || G.en.some(e=>e.x===x&&e.y===y); }
+function enemyAt(x,y){ return G.en.find(e=>e.x===x&&e.y===y)||null; }
+function itemAt(x,y){ return G.it.find(i=>i.x===x&&i.y===y)||null; }
+function walk(x,y){ return inb(x,y) && G.map[y][x]!==T.WALL; }
+
+// ─── COMBAT ────────────────────────────────────────────────────────────────
+function calcDmg(a,d){ return Math.max(1, a.atk+rng(3) - d.def); }
+
+function pAtk(en){
+    const d=calcDmg(G.p,en), t=ENEMIES[en.key];
+    en.hp-=d;
+    if(en.hp<=0){
+        msg(`Убит: ${t.name}! (+${t.xp} xp)`, 'mk');
+        G.en=G.en.filter(e=>e!==en);
+        G.p.kills++;
+        gainXP(t.xp);
+    } else {
+        msg(`→ ${t.name}: −${d} HP (${en.hp}/${en.mhp})`, 'md');
+    }
+}
+
+function eAtk(en){
+    const d=calcDmg(en,G.p), t=ENEMIES[en.key];
+    G.p.hp=Math.max(0,G.p.hp-d);
+    msg(`← ${t.name} бьёт тебя: −${d} HP`, 'md');
+    if(G.p.hp<=0) endGame(false);
+}
+
+function gainXP(v){
+    G.p.xp+=v;
+    while(G.p.xp>=G.p.xpn){
+        G.p.xp-=G.p.xpn;
+        G.p.lvl++; G.p.xpn=~~(G.p.xpn*1.6);
+        G.p.mhp+=10; G.p.hp=Math.min(G.p.hp+10,G.p.mhp);
+        G.p.atk+=2; G.p.def+=1;
+        msg(`✦ Уровень ${G.p.lvl}! HP+10 ATK+2 DEF+1`, 'ml');
+    }
+}
+
+// ─── ITEMS ─────────────────────────────────────────────────────────────────
+function useItem(i){
+    const it=G.p.inv[i]; if(!it) return;
+    const t=ITEMS[it.key];
+    switch(t.use){
+        case 'heal':{
+            const h=Math.min(25+G.p.lvl*3, G.p.mhp-G.p.hp);
+            G.p.hp+=h; msg(`Зелье: +${h} HP`, 'mp'); break;
+        }
+        case 'atk':{
+            const b=3+G.p.lvl; G.p.atk+=b; msg(`Меч экипирован: ATK +${b}`, 'mp'); break;
+        }
+        case 'def':{
+            const b=2+~~(G.p.lvl/2); G.p.def+=b; msg(`Щит экипирован: DEF +${b}`, 'mp'); break;
+        }
+        case 'bomb':{
+            const d=12+G.p.lvl*3;
+            G.en.forEach(e=>{ e.hp-=d; if(e.hp<=0) G.p.kills++; });
+            G.en=G.en.filter(e=>e.hp>0);
+            msg(`Свиток огня: ${d} урона всем врагам!`, 'ms'); break;
+        }
+    }
+    G.p.inv.splice(i,1);
+    tick();
+}
+
+// ─── MOVEMENT ──────────────────────────────────────────────────────────────
+function move(dx,dy){
+    if(G.p.over) return;
+    const nx=G.p.x+dx, ny=G.p.y+dy;
+    if(!walk(nx,ny)) return;
+
+    const en=enemyAt(nx,ny);
+    if(en){ pAtk(en); tick(); return; }
+
+    G.p.x=nx; G.p.y=ny;
+
+    const it=itemAt(nx,ny);
+    if(it) pickup(it);
+
+    if(G.map[ny][nx]===T.STAIR){
+        if(G.floor>=5){ endGame(true); return; }
+        G.floor++;
+        msg(`Ты спускаешься на этаж ${G.floor}...`, 'mi');
+        setupFloor();
+    }
+
+    fov(); tick();
+}
+
+function pickup(it){
+    if(G.p.inv.length>=5){ msg(`Инвентарь полон (${ITEMS[it.key].name})`, 'mi'); return; }
+    G.p.inv.push({key:it.key});
+    G.it=G.it.filter(i=>i!==it);
+    msg(`Подобрал: ${ITEMS[it.key].name}`, 'mp');
+}
+
+// ─── ENEMY AI ──────────────────────────────────────────────────────────────
+function tick(){
+    G.turn++;
+    for(const en of G.en) if(!G.p.over) aiTurn(en);
+    ui(); draw();
+}
+
+function aiTurn(en){
+    if(!G.vis[en.y][en.x]){
+        if(Math.random()<.3){
+            const dirs=[[0,1],[0,-1],[1,0],[-1,0]];
+            const [dx,dy]=dirs[rng(4)];
+            const nx=en.x+dx, ny=en.y+dy;
+            if(walk(nx,ny) && !anyAt(nx,ny)){ en.x=nx; en.y=ny; }
+        }
+        return;
+    }
+    const dist=Math.abs(en.x-G.p.x)+Math.abs(en.y-G.p.y);
+    if(dist===1){ eAtk(en); return; }
+
+    const dx=Math.sign(G.p.x-en.x), dy=Math.sign(G.p.y-en.y);
+    if(dx&&walk(en.x+dx,en.y)&&!anyAt(en.x+dx,en.y)){ en.x+=dx; return; }
+    if(dy&&walk(en.x,en.y+dy)&&!anyAt(en.x,en.y+dy)){ en.y+=dy; }
+}
+
+// ─── MESSAGES ──────────────────────────────────────────────────────────────
+function msg(t,cls='mi'){ G.msgs.unshift({t,c:cls}); if(G.msgs.length>40) G.msgs.pop(); }
+
+// ─── UI ────────────────────────────────────────────────────────────────────
+function $(id){ return document.getElementById(id); }
+
+function ui(){
+    const p=G.p;
+    $('hp').textContent=p.hp; $('mhp').textContent=p.mhp;
+    $('atk').textContent=p.atk; $('def').textContent=p.def;
+    $('lvl').textContent=p.lvl; $('xp').textContent=p.xp; $('xpn').textContent=p.xpn;
+    $('fl').textContent=G.floor; $('kl').textContent=p.kills;
+
+    const pct=p.hp/p.mhp;
+    const bar=$('hpb');
+    bar.style.width=(pct*100)+'%';
+    bar.style.background=pct>.5?'#2ecc71':pct>.25?'#f39c12':'#e74c3c';
+
+    const inv=$('inv');
+    if(!p.inv.length){ inv.innerHTML='<div class="inv-empty">Пусто</div>'; }
+    else inv.innerHTML=p.inv.map((it,i)=>{
+        const t=ITEMS[it.key];
+        return `<div class="inv-item" onclick="useItem(${i})" style="color:${t.col}">
+            <span style="color:#444">[${i+1}]</span> ${t.char} ${t.name}</div>`;
+    }).join('');
+
+    const log=$('log');
+    log.innerHTML=G.msgs.slice(0,20).map(m=>`<div class="${m.c}">${m.t}</div>`).join('');
+}
+
+// ─── RENDERER ──────────────────────────────────────────────────────────────
+const TILE_CHARS={ 0:'#', 1:'·', 2:'>' };
+
+function draw(){
+    ctx.fillStyle='#0a0a0a';
+    ctx.fillRect(0,0,600,480);
+
+    const vcols=~~(600/TW), vrows=~~(480/TH);
+    const cx=Math.max(0,Math.min(G.p.x-~~(vcols/2), COLS-vcols));
+    const cy=Math.max(0,Math.min(G.p.y-~~(vrows/2), ROWS-vrows));
+
+    ctx.font=`bold ${TH}px "Courier New"`;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+
+    for(let vy=0;vy<vrows;vy++){
+        for(let vx=0;vx<vcols;vx++){
+            const wx=cx+vx, wy=cy+vy;
+            if(!inb(wx,wy)) continue;
+            const vis=G.vis[wy][wx], exp=G.exp[wy][wx];
+            if(!exp) continue;
+
+            const px=vx*TW+TW/2, py=vy*TH+TH/2;
+            const tile=G.map[wy][wx];
+
+            let bg,col;
+            if(tile===T.WALL){   bg=vis?'#181818':'#0f0f0f'; col=vis?'#555':'#2a2a2a'; }
+            else if(tile===T.STAIR){ bg=vis?'#1a1500':'#0d0a00'; col=vis?'#ffd700':'#665500'; }
+            else{                bg=vis?'#111':'#0a0a0a';   col=vis?'#3a3a3a':'#1e1e1e'; }
+
+            ctx.fillStyle=bg;
+            ctx.fillRect(vx*TW, vy*TH, TW, TH);
+            ctx.fillStyle=col;
+            ctx.fillText(TILE_CHARS[tile]||' ', px, py);
+
+            if(!vis) continue;
+
+            const it=itemAt(wx,wy);
+            if(it){ ctx.fillStyle=ITEMS[it.key].col; ctx.fillText(ITEMS[it.key].char,px,py); }
+
+            const en=enemyAt(wx,wy);
+            if(en){
+                const et=ENEMIES[en.key];
+                ctx.fillStyle='#0d0d0d';
+                ctx.fillRect(vx*TW+1, vy*TH+2, TW-2, TH-2);
+                ctx.fillStyle=et.col;
+                ctx.fillText(et.char,px,py);
+                const bw=TW-2, f=en.hp/en.mhp;
+                ctx.fillStyle='#222'; ctx.fillRect(vx*TW+1, vy*TH, bw, 2);
+                ctx.fillStyle=f>.5?'#2ecc71':f>.25?'#f39c12':'#e74c3c';
+                ctx.fillRect(vx*TW+1, vy*TH, ~~(bw*f), 2);
             }
         }
+    }
 
-        class Coin {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.size = 20;
-                this.element = null;
-                this.collected = false;
-            }
+    // player
+    const pvx=(G.p.x-cx)*TW, pvy=(G.p.y-cy)*TH;
+    ctx.fillStyle='#0d0d0d';
+    ctx.fillRect(pvx+1, pvy+2, TW-2, TH-2);
+    ctx.fillStyle='#00ff88';
+    ctx.fillText('@', pvx+TW/2, pvy+TH/2);
+}
 
-            draw() {
-                const coin = document.createElement('div');
-                coin.className = 'coin';
-                coin.style.left = this.x + 'px';
-                coin.style.top = this.y + 'px';
-                gameWrapper.appendChild(coin);
-                this.element = coin;
-            }
+// ─── GAME OVER ─────────────────────────────────────────────────────────────
+function endGame(won){
+    G.p.over=true;
+    $('mt').style.color=won?'#ffd700':'#e74c3c';
+    $('mt').textContent=won?'⚔ ПОБЕДА! ⚔':'💀 ТЫ ПОГИБ';
+    $('ms').innerHTML=`
+        <p>Этаж: <span>${G.floor}/5</span></p>
+        <p>Уровень: <span>${G.p.lvl}</span></p>
+        <p>Убийств: <span>${G.p.kills}</span></p>
+        <p>Ходов: <span>${G.turn}</span></p>`;
+    $('ov').classList.add('on');
+}
 
-            update() {
-                this.x -= 5;
-            }
+// ─── INIT ──────────────────────────────────────────────────────────────────
+function newGame(){
+    $('ov').classList.remove('on');
+    G=mkState();
+    setupFloor();
+    msg('Ты входишь в подземелье...', 'mi');
+    msg('Найди лестницу [>] на каждом этаже', 'mi');
+    msg('Пять этажей. Убей дракона. Удачи.', 'mi');
+    ui(); draw();
+}
 
-            isOffscreen() {
-                return this.x + this.size < 0;
-            }
+document.addEventListener('keydown', e=>{
+    if(G.p.over) return;
+    const dir={
+        ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],
+        w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],
+        W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]
+    };
+    if(dir[e.key]){ e.preventDefault(); move(...dir[e.key]); }
+    else if(e.key==='.'){ tick(); }
+    else if(e.key>='1'&&e.key<='5'){ useItem(+e.key-1); }
+});
 
-            collidesWith(birdX, birdY, birdSize = 30) {
-                return birdX < this.x + this.size &&
-                       birdX + birdSize > this.x &&
-                       birdY < this.y + this.size &&
-                       birdY + birdSize > this.y;
-            }
-
-            removeFromDOM() {
-                if (this.element) this.element.remove();
-            }
-        }
-
-        function addClouds() {
-            for (let i = 0; i < 3; i++) {
-                const cloud = document.createElement('div');
-                cloud.className = 'cloud';
-                cloud.textContent = '☁️';
-                cloud.style.left = Math.random() * gameWidth + 'px';
-                cloud.style.top = Math.random() * 150 + 'px';
-                gameWrapper.appendChild(cloud);
-            }
-        }
-
-        function jump() {
-            if (gameRunning) {
-                velocityY = jumpPower;
-            }
-        }
-
-        function startGame() {
-            gameRunning = true;
-            gameOverScreen.style.display = 'none';
-            startBtn.disabled = true;
-            startBtn.textContent = 'ИГРА ИДЁТ...';
-            score = 0;
-            coins = 0;
-            birdY = 250;
-            velocityY = 0;
-            pipes.length = 0;
-            coins_list.length = 0;
-            scoreDisplay.textContent = '0';
-            coinsDisplay.textContent = '0';
-
-            // Clear game area
-            const allElements = gameWrapper.querySelectorAll('.pipe, .coin');
-            allElements.forEach(el => el.remove());
-
-            addClouds();
-            gameLoop();
-        }
-
-        function endGame() {
-            gameRunning = false;
-            startBtn.disabled = false;
-            startBtn.textContent = 'НАЧАТЬ ИГРУ';
-            gameOverScreen.style.display = 'block';
-            finalScoreDisplay.textContent = score;
-            finalCoinsDisplay.textContent = coins;
-        }
-
-        let frameCount = 0;
-
-        function gameLoop() {
-            if (!gameRunning) return;
-
-            // Physics
-            velocityY += gravity;
-            birdY += velocityY;
-
-            // Boundary check
-            if (birdY <= 0 || birdY + 30 >= gameHeight) {
-                endGame();
-                return;
-            }
-
-            // Update bird position
-            bird.style.top = birdY + 'px';
-
-            // Spawn pipes
-            frameCount++;
-            if (frameCount % 80 === 0) {
-                const newPipe = new Pipe();
-                newPipe.draw();
-                pipes.push(newPipe);
-
-                // Spawn coin in the gap
-                const coinX = gameWidth + 30;
-                const coinY = newPipe.topHeight + newPipe.gap / 2 - 10;
-                const newCoin = new Coin(coinX, coinY);
-                newCoin.draw();
-                coins_list.push(newCoin);
-            }
-
-            // Update pipes
-            for (let i = pipes.length - 1; i >= 0; i--) {
-                pipes[i].update();
-
-                if (pipes[i].collidesWith(birdX, birdY)) {
-                    endGame();
-                    return;
-                }
-
-                if (!pipes[i].passed && pipes[i].x + pipes[i].width < birdX) {
-                    pipes[i].passed = true;
-                    score += 10;
-                    scoreDisplay.textContent = score;
-                }
-
-                if (pipes[i].isOffscreen()) {
-                    pipes[i].removeFromDOM();
-                    pipes.splice(i, 1);
-                }
-            }
-
-            // Update coins
-            for (let i = coins_list.length - 1; i >= 0; i--) {
-                coins_list[i].update();
-
-                if (!coins_list[i].collected && coins_list[i].collidesWith(birdX, birdY)) {
-                    coins_list[i].collected = true;
-                    coins++;
-                    coinsDisplay.textContent = coins;
-                    coins_list[i].removeFromDOM();
-                }
-
-                if (coins_list[i].isOffscreen()) {
-                    coins_list[i].removeFromDOM();
-                    coins_list.splice(i, 1);
-                }
-            }
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Event listeners
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                jump();
-            }
-        });
-
-        document.addEventListener('click', jump);
-        startBtn.addEventListener('click', startGame);
-
-        // Mobile touch support
-        document.addEventListener('touchstart', jump);
-
-        addClouds();
-    </script>
+canvas=document.getElementById('c');
+ctx=canvas.getContext('2d');
+newGame();
+</script>
 </body>
 </html>
