@@ -3,161 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dungeon Depths v2 — Roguelike</title>
+    <title>Slay the Spire-like Roguelike</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
             color: #e0e0e0;
             font-family: 'Courier New', monospace;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             min-height: 100vh;
             padding: 16px;
         }
 
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
         h1 {
+            text-align: center;
             color: #ff6b6b;
-            font-size: 28px;
-            letter-spacing: 8px;
+            font-size: 32px;
+            margin-bottom: 20px;
             text-shadow: 0 0 20px #ff6b6b88;
-            margin-bottom: 12px;
-            animation: pulse 2s infinite;
+            letter-spacing: 4px;
         }
 
-        @keyframes pulse {
-            0%, 100% { text-shadow: 0 0 20px #ff6b6b88; }
-            50% { text-shadow: 0 0 40px #ff6b6b; }
-        }
-
-        .game-info {
-            color: #888;
-            font-size: 13px;
-            margin-bottom: 10px;
-        }
-
-        .layout {
+        .battle-screen {
             display: flex;
-            gap: 18px;
-            align-items: flex-start;
+            gap: 30px;
+            margin-bottom: 20px;
         }
 
-        canvas {
-            border: 3px solid #333;
-            display: block;
-            image-rendering: pixelated;
-            background: #0a0a0a;
-            box-shadow: 0 0 40px rgba(255,107,107,.3);
-        }
-
-        .sidebar {
-            width: 280px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+        .enemy-side, .player-side {
+            flex: 1;
         }
 
         .panel {
             background: linear-gradient(135deg, #111 0%, #1a1a2e 100%);
-            border: 1px solid #333;
+            border: 2px solid #333;
             border-top: 1px solid #444;
-            padding: 12px 14px;
-            border-radius: 4px;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 16px;
         }
 
         .panel h3 {
-            font-size: 10px;
             color: #ff6b6b;
-            letter-spacing: 3px;
+            font-size: 14px;
             text-transform: uppercase;
-            border-bottom: 1px solid #2a2a2a;
-            padding-bottom: 6px;
+            letter-spacing: 3px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .enemy-display {
+            text-align: center;
+            padding: 30px;
+            background: #0a0a0a;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .enemy-emoji {
+            font-size: 80px;
+            margin-bottom: 15px;
+        }
+
+        .enemy-name {
+            font-size: 18px;
+            color: #ff6b6b;
             margin-bottom: 10px;
         }
 
-        .stat {
+        .health-bar {
             display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            margin: 4px 0;
+            gap: 10px;
+            margin: 15px 0;
             align-items: center;
         }
-        .sl { color: #666; }
-        .sv { color: #4ade80; font-weight: bold; }
-        .sv.warn { color: #fbbf24; }
-        .sv.danger { color: #ff6b6b; }
 
-        .bar { height: 8px; background: #1a1a1a; margin-top: 6px; border-radius: 2px; }
-        .bar-fill { height: 100%; transition: width .2s, background .2s; border-radius: 2px; }
-
-        .abilities {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-            margin-top: 6px;
-        }
-        .ability-icon {
-            width: 24px;
+        .bar {
+            flex: 1;
             height: 24px;
-            background: #1a1a2e;
-            border: 1px solid #333;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #2ecc71);
+            transition: width 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
-            cursor: help;
-            border-radius: 2px;
-        }
-        .ability-icon:hover { border-color: #4ade80; }
-
-        .inv-item {
             font-size: 12px;
-            padding: 6px 8px;
-            margin: 3px 0;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .bar-fill.low {
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+        }
+
+        .bar-fill.critical {
+            background: linear-gradient(90deg, #ff6b6b, #ef4444);
+        }
+
+        .intent {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 12px;
+            text-align: center;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .intent .icon {
+            font-size: 24px;
+            margin-right: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .stat-box {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 12px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #4ade80;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .hand {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            min-height: 180px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .card {
+            width: 120px;
+            background: linear-gradient(135deg, #1a1a2e, #0f0f1e);
+            border: 2px solid #4ade80;
+            border-radius: 6px;
+            padding: 12px;
             cursor: pointer;
-            border: 1px solid transparent;
-            border-radius: 2px;
+            text-align: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: #22c55e;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .card.disabled:hover {
+            transform: none;
+            border-color: #4ade80;
+            box-shadow: none;
+        }
+
+        .card-cost {
+            background: #ff6b6b;
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            font-weight: bold;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 12px;
         }
-        .inv-item:hover { background: #1a2a2e; border-color: #333; }
-        .inv-item .rarity {
-            font-size: 10px;
-            opacity: 0.7;
+
+        .card-icon {
+            font-size: 32px;
+            margin: 8px 0;
         }
-        .rarity-common { color: #aaa; }
-        .rarity-rare { color: #4fc3f7; }
-        .rarity-epic { color: #9b59b6; }
-        .rarity-legend { color: #ffd700; }
 
-        .inv-empty { color: #555; font-size: 12px; }
+        .card-name {
+            font-size: 12px;
+            color: #e0e0e0;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
 
-        .log {
-            height: 200px;
-            overflow-y: auto;
+        .card-desc {
             font-size: 11px;
-            line-height: 1.8;
+            color: #888;
         }
-        .log::-webkit-scrollbar { width: 4px; }
-        .log::-webkit-scrollbar-track { background: #0a0a0a; }
-        .log::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        .log-msg { padding: 2px 0; }
-        .msg-damage { color: #ff6b6b; }
-        .msg-kill { color: #ff8c42; font-weight: bold; }
-        .msg-item { color: #4ade80; }
-        .msg-level { color: #9b59b6; font-weight: bold; }
-        .msg-special { color: #4fc3f7; }
-        .msg-info { color: #666; }
+        .energy-display {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #0a0a0a;
+            border-radius: 4px;
+        }
 
-        .ctrl { font-size: 11px; color: #555; line-height: 2; }
-        .ctrl b { color: #888; }
+        .energy-bar {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+            margin-top: 8px;
+        }
 
-        .overlay {
+        .energy-orb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4ade80;
+            border: 1px solid #22c55e;
+        }
+
+        .energy-orb.empty {
+            background: #222;
+            border-color: #333;
+        }
+
+        .action-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #ff6b6b, #ff8c42);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 12px;
+            transition: all 0.3s;
+        }
+
+        .action-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .modal {
             display: none;
             position: fixed;
             inset: 0;
@@ -166,730 +296,562 @@
             align-items: center;
             z-index: 99;
         }
-        .overlay.on { display: flex; }
 
-        .modal {
+        .modal.on {
+            display: flex;
+        }
+
+        .modal-content {
             background: linear-gradient(135deg, #111 0%, #1a1a2e 100%);
             border: 2px solid #ff6b6b;
-            padding: 40px 60px;
+            padding: 40px;
             text-align: center;
+            border-radius: 6px;
+            max-width: 600px;
+        }
+
+        .modal-content h2 {
+            font-size: 32px;
+            color: #4ade80;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            font-size: 16px;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .rewards {
+            display: flex;
+            gap: 16px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .reward-card {
+            width: 140px;
+            background: #0a0a0a;
+            border: 2px solid #4ade80;
+            border-radius: 6px;
+            padding: 16px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .reward-card:hover {
+            border-color: #22c55e;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .reward-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .reward-name {
+            font-size: 13px;
+            color: #e0e0e0;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .reward-desc {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .log-msg {
+            padding: 4px 0;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #888;
+        }
+
+        .log-msg.important {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .game-over-modal {
+            text-align: center;
+        }
+
+        .game-over-modal h2 {
+            font-size: 48px !important;
+            margin-bottom: 30px !important;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .stat-summary-box {
+            background: #0a0a0a;
+            padding: 16px;
             border-radius: 4px;
-            min-width: 320px;
         }
 
-        .modal h2 {
-            font-size: 36px;
-            margin-bottom: 16px;
-            animation: bounce 0.6s;
+        .stat-summary-label {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
         }
 
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+        .stat-summary-value {
+            color: #4ade80;
+            font-size: 24px;
+            font-weight: bold;
         }
 
-        .modal p { font-size: 14px; color: #888; margin: 6px 0; }
-        .modal p span { color: #4ade80; font-weight: bold; }
-
-        .btn {
-            margin-top: 20px;
+        button.btn-start {
             padding: 12px 32px;
             background: linear-gradient(135deg, #ff6b6b, #ff8c42);
             color: #fff;
             border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
-            font-family: inherit;
-            font-size: 14px;
-            letter-spacing: 2px;
             text-transform: uppercase;
-            border-radius: 4px;
-            transition: all 0.3s;
+            letter-spacing: 2px;
+            margin-top: 20px;
         }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,107,107,.5); }
 
-        .class-select {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 12px;
-            margin: 20px 0;
+        button.btn-start:hover {
+            transform: scale(1.05);
         }
-        .class-btn {
-            padding: 16px;
-            background: #1a1a2e;
-            border: 2px solid #333;
-            color: #e0e0e0;
-            cursor: pointer;
-            border-radius: 4px;
-            text-align: center;
-            transition: all 0.2s;
-        }
-        .class-btn:hover {
-            border-color: #ff6b6b;
-            background: #2a2a3e;
-        }
-        .class-btn .name { font-weight: bold; margin-bottom: 8px; }
-        .class-btn .desc { font-size: 10px; color: #888; }
     </style>
 </head>
 <body>
-<h1>🗡 DUNGEON DEPTHS v2 🗡</h1>
-<div class="game-info" id="info"></div>
 
-<div class="layout">
-    <canvas id="c" width="640" height="480"></canvas>
+<div class="container">
+    <h1>🃏 CARD SPIRE 🃏</h1>
 
-    <div class="sidebar">
+    <!-- BATTLE SCREEN -->
+    <div id="battle-screen">
+        <div class="battle-screen">
+            <!-- Enemy -->
+            <div class="enemy-side">
+                <div class="enemy-display">
+                    <div class="enemy-emoji" id="enemy-emoji"></div>
+                    <div class="enemy-name" id="enemy-name"></div>
+                    <div class="health-bar">
+                        <div class="bar">
+                            <div class="bar-fill" id="enemy-health-bar"></div>
+                        </div>
+                        <div style="min-width: 50px; text-align: center;">
+                            <span id="enemy-hp">0</span> / <span id="enemy-maxhp">0</span>
+                        </div>
+                    </div>
+                    <div class="intent" id="enemy-intent"></div>
+                </div>
 
-        <div class="panel">
-            <h3>⚔ Герой</h3>
-            <div class="stat"><span class="sl">HP</span> <span class="sv" id="hp">30</span>/<span id="mhp">30</span></div>
-            <div class="bar"><div class="bar-fill" id="hpb"></div></div>
-            <div class="stat" style="margin-top:8px"><span class="sl">Класс</span> <span class="sv" id="cls">Воин</span></div>
-            <div class="stat"><span class="sl">ATK</span> <span class="sv" id="atk">5</span></div>
-            <div class="stat"><span class="sl">DEF</span> <span class="sv" id="def">1</span></div>
-            <div class="stat"><span class="sl">Крит</span> <span class="sv" id="crit">15%</span></div>
+                <div class="panel">
+                    <h3>Battle Log</h3>
+                    <div id="log" style="height: 150px; overflow-y: auto; font-size: 12px;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player -->
+            <div class="player-side">
+                <div class="panel">
+                    <h3>Your Stats</h3>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">HP</div>
+                            <div style="color: #4ade80; font-size: 18px; font-weight: bold;">
+                                <span id="player-hp">0</span> / <span id="player-maxhp">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Block</div>
+                            <div style="color: #4fc3f7; font-size: 18px; font-weight: bold;">
+                                <span id="player-block">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="health-bar">
+                        <div class="bar">
+                            <div class="bar-fill" id="player-health-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="energy-display">
+                        Energy: <span id="energy">3</span> / 3
+                        <div class="energy-bar" id="energy-bar"></div>
+                    </div>
+                    <button class="action-button" id="end-turn-btn" onclick="endTurn()">End Turn</button>
+                </div>
+
+                <div class="panel">
+                    <h3>Hand</h3>
+                    <div class="hand" id="hand"></div>
+                </div>
+            </div>
         </div>
-
-        <div class="panel">
-            <h3>📈 Прогресс</h3>
-            <div class="stat"><span class="sl">Уровень</span> <span class="sv" id="lvl">1</span></div>
-            <div class="stat"><span class="sl">Опыт</span> <span class="sv" id="xp">0</span>/<span id="xpn">25</span></div>
-            <div class="bar"><div class="bar-fill" id="xpb"></div></div>
-            <div class="stat" style="margin-top:8px"><span class="sl">Этаж</span> <span class="sv" id="fl">1</span>/5</div>
-            <div class="stat"><span class="sl">Убийств</span> <span class="sv" id="kl">0</span></div>
-        </div>
-
-        <div class="panel">
-            <h3>✨ Способности</h3>
-            <div class="abilities" id="abilities"></div>
-        </div>
-
-        <div class="panel">
-            <h3>🎒 Инвентарь [1-5]</h3>
-            <div id="inv"><div class="inv-empty">Пусто</div></div>
-        </div>
-
-        <div class="panel">
-            <h3>📜 Журнал</h3>
-            <div class="log" id="log"></div>
-        </div>
-
-        <div class="panel ctrl">
-            <b>WASD/↑↓←→</b> движение<br>
-            <b>1–5</b> предмет<br>
-            <b>.</b> пропустить ход
-        </div>
-
     </div>
-</div>
 
-<div class="overlay" id="ov">
-    <div class="modal">
-        <h2 id="mt"></h2>
-        <div id="ms"></div>
-        <div class="class-select" id="cs"></div>
-        <button class="btn" id="btn-play" onclick="startGame()" style="display:none;">Начать игру</button>
-        <button class="btn" onclick="location.reload()">Играть снова</button>
+    <!-- REWARD MODAL -->
+    <div class="modal" id="reward-modal">
+        <div class="modal-content">
+            <h2>Victory!</h2>
+            <p>Choose a card to add to your deck</p>
+            <div class="rewards" id="reward-cards"></div>
+            <button class="btn-start" onclick="nextBattle()">Continue</button>
+        </div>
+    </div>
+
+    <!-- GAME OVER MODAL -->
+    <div class="modal" id="gameover-modal">
+        <div class="modal-content game-over-modal">
+            <h2 id="gameover-title"></h2>
+            <div class="stats-summary">
+                <div class="stat-summary-box">
+                    <div class="stat-summary-label">Enemies Defeated</div>
+                    <div class="stat-summary-value" id="stat-kills">0</div>
+                </div>
+                <div class="stat-summary-box">
+                    <div class="stat-summary-label">Cards Collected</div>
+                    <div class="stat-summary-value" id="stat-cards">0</div>
+                </div>
+                <div class="stat-summary-box">
+                    <div class="stat-summary-label">Deck Size</div>
+                    <div class="stat-summary-value" id="stat-decksize">0</div>
+                </div>
+                <div class="stat-summary-box">
+                    <div class="stat-summary-label">Floor Reached</div>
+                    <div class="stat-summary-value" id="stat-floor">0</div>
+                </div>
+            </div>
+            <button class="btn-start" onclick="location.reload()">Play Again</button>
+        </div>
     </div>
 </div>
 
 <script>
 // ════════════════════════════════════════════════════════════════════════════
-// CONSTANTS
+// CARD DEFINITIONS
 // ════════════════════════════════════════════════════════════════════════════
 
-const COLS = 64, ROWS = 30, TW = 10, TH = 16;
-const T = { WALL:0, FLOOR:1, STAIR:2 };
+const CARD_DEFS = {
+    strike: { name: 'Strike', icon: '⚔', cost: 1, type: 'attack', effect: { dmg: 6 } },
+    heavy_strike: { name: 'Heavy Strike', icon: '💥', cost: 2, type: 'attack', effect: { dmg: 13 } },
+    pummel: { name: 'Pummel', icon: '👊', cost: 1, type: 'attack', effect: { dmg: 4, hits: 2 } },
 
-const CLASSES = {
-    warrior: {
-        name: 'Воин', emoji: '🗡',
-        hp: 40, atk: 7, def: 3, crit: 20,
-        desc: 'Сильная атака, хорошая защита'
-    },
-    rogue: {
-        name: 'Вор', emoji: '🗡',
-        hp: 28, atk: 9, def: 1, crit: 35,
-        desc: 'Высокий крит, низкая защита'
-    },
-    mage: {
-        name: 'Маг', emoji: '✨',
-        hp: 24, atk: 5, def: 2, crit: 15,
-        desc: 'Много маны, магические умения'
-    },
-};
+    defend: { name: 'Defend', icon: '🛡', cost: 1, type: 'skill', effect: { block: 5 } },
+    iron_skin: { name: 'Iron Skin', icon: '🪨', cost: 1, type: 'skill', effect: { block: 7 } },
+    brace: { name: 'Brace', icon: '🔒', cost: 0, type: 'skill', effect: { block: 3 } },
 
-const ABILITIES = {
-    slash: { name: 'Удар', emoji: '⚡', lvl: 1, class: ['warrior', 'rogue'] },
-    shield: { name: 'Щит', emoji: '🛡', lvl: 3, class: ['warrior'] },
-    backstab: { name: 'Удар в спину', emoji: '💀', lvl: 2, class: ['rogue'] },
-    fireball: { name: 'Огненный шар', emoji: '🔥', lvl: 2, class: ['mage'] },
+    fireball: { name: 'Fireball', icon: '🔥', cost: 2, type: 'power', effect: { dmg: 10, aoe: true } },
+    flame_strike: { name: 'Flame Strike', icon: '🔥', cost: 3, type: 'power', effect: { dmg: 15 } },
+
+    weakened: { name: 'Weakened', icon: '😵', cost: -1, type: 'curse', effect: { debuff: true } },
 };
 
 const ENEMIES = {
-    rat: { n:'Крыса', e:'🐀', hp:6, atk:2, def:0, xp:3, col:'#a0522d', fl:1, boss:false },
-    bat: { n:'Летучая мышь', e:'🦇', hp:5, atk:3, def:0, xp:4, col:'#8b7355', fl:1, boss:false },
-    goblin: { n:'Гоблин', e:'👹', hp:14, atk:5, def:1, xp:12, col:'#27ae60', fl:1, boss:false },
-    orc: { n:'Орк', e:'🗡', hp:22, atk:8, def:2, xp:18, col:'#d35400', fl:2, boss:false },
-    skeleton: { n:'Скелет', e:'💀', hp:18, atk:6, def:2, xp:16, col:'#bdc3c7', fl:2, boss:false },
-    zombie: { n:'Зомби', e:'🧟', hp:24, atk:7, def:1, xp:20, col:'#95a5a6', fl:2, boss:false },
-    troll: { n:'Тролль', e:'👹', hp:36, atk:11, def:4, xp:40, col:'#8e44ad', fl:3, boss:false },
-    wyvern: { n:'Виверна', e:'🐉', hp:32, atk:10, def:3, xp:38, col:'#2980b9', fl:3, boss:false },
-    lich: { n:'Лич', e:'👻', hp:50, atk:14, def:5, xp:60, col:'#3498db', fl:4, boss:false },
-    golem: { n:'Голем', e:'🗿', hp:60, atk:12, def:8, xp:70, col:'#7f8c8d', fl:4, boss:false },
-    dragon: { n:'Дракон', e:'🐲', hp:100, atk:20, def:8, xp:150, col:'#e74c3c', fl:5, boss:true },
-    demon: { n:'Демон', e:'😈', hp:80, atk:18, def:7, xp:120, col:'#c0392b', fl:5, boss:true },
+    goblin: { name: 'Goblin', emoji: '👹', hp: 12, dmg: 2, actions: ['attack', 'attack', 'defend'] },
+    skeleton: { name: 'Skeleton', emoji: '💀', hp: 16, dmg: 3, actions: ['attack', 'attack', 'defend'] },
+    orc: { name: 'Orc', emoji: '🗡', hp: 22, dmg: 4, actions: ['heavy_attack', 'defend', 'attack'] },
+    dragon: { name: 'Dragon', emoji: '🐉', hp: 50, dmg: 6, actions: ['attack', 'heavy_attack', 'attack'], isBoss: true },
 };
-
-const ITEMS = {
-    potion: { n:'Зелье HP', e:'🧪', use:'heal', val:30, rare:'common' },
-    potion_big: { n:'Большое зелье', e:'🧪', use:'heal', val:60, rare:'rare' },
-    sword: { n:'Меч', e:'🗡', use:'atk', val:3, rare:'common' },
-    sword_magic: { n:'Магический клинок', e:'✨', use:'atk', val:7, rare:'epic' },
-    shield: { n:'Щит', e:'🛡', use:'def', val:2, rare:'common' },
-    shield_epic: { n:'Эпический щит', e:'🛡', use:'def', val:5, rare:'epic' },
-    scroll_fire: { n:'Свиток огня', e:'🔥', use:'bomb', val:20, rare:'rare' },
-    scroll_ice: { n:'Свиток льда', e:'❄', use:'freeze', val:0, rare:'rare' },
-    amulet: { n:'Амулет мудрости', e:'📿', use:'stats', val:2, rare:'epic' },
-    ring: { n:'Кольцо воина', e:'💍', use:'stats', val:3, rare:'legend' },
-};
-
-const RARITIES = {
-    common: '#aaa',
-    rare: '#4fc3f7',
-    epic: '#9b59b6',
-    legend: '#ffd700',
-};
-
-// ════════════════════════════════════════════════════════════════════════════
-// STATE
-// ════════════════════════════════════════════════════════════════════════════
-
-let G, canvas, ctx;
-
-function mkPlayer(cls) {
-    const c = CLASSES[cls];
-    return {
-        x:0, y:0, cls,
-        hp: c.hp, mhp: c.hp,
-        atk: c.atk, def: c.def, crit: c.crit,
-        lvl: 1, xp: 0, xpn: 25,
-        inv: [], kills: 0, over: false,
-        abilities: [],
-    };
-}
-
-function mkState(cls) {
-    return {
-        floor: 1,
-        map: [], exp: [], vis: [],
-        en: [], it: [],
-        msgs: [], turn: 0,
-        p: mkPlayer(cls),
-    };
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// DUNGEON GENERATION
-// ════════════════════════════════════════════════════════════════════════════
-
-function gen() {
-    const map=[], exp=[], vis=[];
-    for(let y=0;y<ROWS;y++){
-        map.push(new Uint8Array(COLS));
-        exp.push(new Uint8Array(COLS));
-        vis.push(new Uint8Array(COLS));
-    }
-
-    const rooms=[];
-    const want = 8 + G.floor;
-
-    for(let a=0;a<300&&rooms.length<want;a++){
-        const w=6+rng(8), h=5+rng(6);
-        const rx=1+rng(COLS-w-2), ry=1+rng(ROWS-h-2);
-        const r={x:rx,y:ry,w,h};
-
-        if(rooms.some(o=> rx<o.x+o.w+1 && rx+w+1>o.x && ry<o.y+o.h+1 && ry+h+1>o.y)) continue;
-
-        for(let y=ry;y<ry+h;y++) for(let x=rx;x<rx+w;x++) map[y][x]=T.FLOOR;
-
-        if(rooms.length>0){
-            const p=rooms[rooms.length-1];
-            const x1=~~(p.x+p.w/2), y1=~~(p.y+p.h/2);
-            const x2=~~(rx+w/2),    y2=~~(ry+h/2);
-            if(Math.random()<.5){ hline(map,x1,x2,y1); vline(map,y1,y2,x2); }
-            else                 { vline(map,y1,y2,x1); hline(map,x1,x2,y2); }
-        }
-        rooms.push(r);
-    }
-
-    return {map,exp,vis,rooms};
-}
-
-function hline(m,x1,x2,y){ for(let x=Math.min(x1,x2);x<=Math.max(x1,x2);x++) if(inb(x,y)) m[y][x]=T.FLOOR; }
-function vline(m,y1,y2,x){ for(let y=Math.min(y1,y2);y<=Math.max(y1,y2);y++) if(inb(x,y)) m[y][x]=T.FLOOR; }
-function rc(r){ return {x:~~(r.x+r.w/2), y:~~(r.y+r.h/2)}; }
-function inb(x,y){ return x>=0&&x<COLS&&y>=0&&y<ROWS; }
-function rng(n){ return Math.floor(Math.random()*n); }
-
-function setupFloor(){
-    const {map,exp,vis,rooms} = gen();
-    G.map=map; G.exp=exp; G.vis=vis; G.en=[]; G.it=[];
-
-    const s=rc(rooms[0]);
-    G.p.x=s.x; G.p.y=s.y;
-
-    const e=rc(rooms[rooms.length-1]);
-    map[e.y][e.x]=T.STAIR;
-
-    const pool=Object.keys(ENEMIES).filter(k=>ENEMIES[k].fl<=G.floor);
-
-    for(let i=1;i<rooms.length-1;i++){
-        const isBossRoom = i === rooms.length-2;
-        const cnt = isBossRoom ? 1 : (1+rng(3));
-        for(let j=0;j<cnt;j++) {
-            if(isBossRoom && j===0) spawnBoss(rooms[i]);
-            else spawnEnemy(rooms[i],pool);
-        }
-        if(Math.random()<.6) spawnItem(rooms[i]);
-    }
-    spawnItem(rooms[0],'potion');
-
-    fov();
-}
-
-function spawnEnemy(room,pool){
-    for(let a=0;a<20;a++){
-        const x=room.x+1+rng(room.w-2), y=room.y+1+rng(room.h-2);
-        if(!anyAt(x,y)){
-            const key=pool[rng(pool.length)], t=ENEMIES[key];
-            const bonus=G.floor*1.5;
-            G.en.push({
-                x,y,key,
-                hp:~~(t.hp+bonus), mhp:~~(t.hp+bonus),
-                atk:~~(t.atk+G.floor*0.3), def:t.def,
-            });
-            return;
-        }
-    }
-}
-
-function spawnBoss(room){
-    const c = rc(room);
-    const bosses = ['troll', 'lich', 'golem', 'demon', 'dragon'];
-    const key = bosses[Math.min(G.floor-1, bosses.length-1)];
-    const t = ENEMIES[key];
-    G.en.push({
-        x: c.x, y: c.y, key,
-        hp: ~~(t.hp * 1.5), mhp: ~~(t.hp * 1.5),
-        atk: ~~(t.atk * 1.3), def: t.def + 2,
-    });
-}
-
-function spawnItem(room,force=null){
-    for(let a=0;a<20;a++){
-        const x=room.x+1+rng(room.w-2), y=room.y+1+rng(room.h-2);
-        if(G.map[y][x]===T.FLOOR && !itemAt(x,y)){
-            const keys=Object.keys(ITEMS);
-            const key=force||keys[rng(keys.length)];
-            G.it.push({x,y,key});
-            return;
-        }
-    }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// FOV
-// ════════════════════════════════════════════════════════════════════════════
-
-function fov(){
-    for(let y=0;y<ROWS;y++) G.vis[y].fill(0);
-    const {x:px,y:py}=G.p, R=8;
-    for(let a=0;a<360;a+=3){
-        const rad=a*Math.PI/180;
-        let rx=px+.5, ry=py+.5;
-        for(let s=0;s<R;s++){
-            const tx=~~rx, ty=~~ry;
-            if(!inb(tx,ty)) break;
-            G.vis[ty][tx]=1; G.exp[ty][tx]=1;
-            if(G.map[ty][tx]===T.WALL) break;
-            rx+=Math.cos(rad)*.5; ry+=Math.sin(rad)*.5;
-        }
-    }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// LOOKUPS
-// ════════════════════════════════════════════════════════════════════════════
-
-function anyAt(x,y){ return (G.p.x===x&&G.p.y===y) || G.en.some(e=>e.x===x&&e.y===y); }
-function enemyAt(x,y){ return G.en.find(e=>e.x===x&&e.y===y)||null; }
-function itemAt(x,y){ return G.it.find(i=>i.x===x&&i.y===y)||null; }
-function walk(x,y){ return inb(x,y) && G.map[y][x]!==T.WALL; }
-
-// ════════════════════════════════════════════════════════════════════════════
-// COMBAT
-// ════════════════════════════════════════════════════════════════════════════
-
-function calcDmg(a, d) {
-    let dmg = a.atk + rng(4) - d.def;
-    if(Math.random()*100 < a.crit) dmg = ~~(dmg * 1.5);
-    return Math.max(1, dmg);
-}
-
-function pAtk(en){
-    const d=calcDmg(G.p,en), t=ENEMIES[en.key];
-    en.hp-=d;
-    if(en.hp<=0){
-        msg(`${t.e} ${t.n}: УБИТ! +${t.xp}xp`, 'kill');
-        G.en=G.en.filter(e=>e!==en);
-        G.p.kills++;
-        gainXP(t.xp);
-    } else {
-        msg(`⚔ ${t.e} −${d} HP (${en.hp}/${en.mhp})`, 'damage');
-    }
-}
-
-function eAtk(en){
-    const d=calcDmg(en,G.p), t=ENEMIES[en.key];
-    G.p.hp=Math.max(0,G.p.hp-d);
-    msg(`⚠ ${t.e} ${t.n} −${d} HP`, 'damage');
-    if(G.p.hp<=0) endGame(false);
-}
-
-function gainXP(v){
-    G.p.xp+=v;
-    while(G.p.xp>=G.p.xpn){
-        G.p.xp-=G.p.xpn;
-        G.p.lvl++; G.p.xpn=~~(G.p.xpn*1.4);
-        G.p.mhp+=8; G.p.hp=Math.min(G.p.hp+8,G.p.mhp);
-        G.p.atk+=2; G.p.def+=1; G.p.crit=Math.min(50, G.p.crit+2);
-
-        // unlock abilities
-        for(const [k,a] of Object.entries(ABILITIES)){
-            if(!G.p.abilities.includes(k) && a.lvl===G.p.lvl && a.class.includes(G.p.cls)){
-                G.p.abilities.push(k);
-                msg(`✨ Изучена способность: ${a.emoji} ${a.name}`, 'level');
-            }
-        }
-        msg(`📈 Уровень ${G.p.lvl}!`, 'level');
-    }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// ITEMS
-// ════════════════════════════════════════════════════════════════════════════
-
-function useItem(i){
-    const it=G.p.inv[i]; if(!it) return;
-    const t=ITEMS[it.key];
-    switch(t.use){
-        case 'heal':{
-            const h=Math.min(t.val, G.p.mhp-G.p.hp);
-            G.p.hp+=h; msg(`💊 +${h} HP`, 'item'); break;
-        }
-        case 'atk':{
-            G.p.atk+=t.val; msg(`🗡 ATK +${t.val}`, 'item'); break;
-        }
-        case 'def':{
-            G.p.def+=t.val; msg(`🛡 DEF +${t.val}`, 'item'); break;
-        }
-        case 'stats':{
-            G.p.atk+=1; G.p.def+=1; msg(`⭐ Атака и защита +1`, 'item'); break;
-        }
-        case 'bomb':{
-            const d=t.val;
-            G.en.forEach(e=>{ e.hp-=d; if(e.hp<=0) G.p.kills++; });
-            G.en=G.en.filter(e=>e.hp>0);
-            msg(`🔥 ${d} урона всем!`, 'special');
-            break;
-        }
-        case 'freeze':{
-            msg(`❄ Враги замораживаются...`, 'special');
-            break;
-        }
-    }
-    G.p.inv.splice(i,1);
-    tick();
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// MOVEMENT
-// ════════════════════════════════════════════════════════════════════════════
-
-function move(dx,dy){
-    if(G.p.over) return;
-    const nx=G.p.x+dx, ny=G.p.y+dy;
-    if(!walk(nx,ny)) return;
-
-    const en=enemyAt(nx,ny);
-    if(en){ pAtk(en); tick(); return; }
-
-    G.p.x=nx; G.p.y=ny;
-
-    const it=itemAt(nx,ny);
-    if(it) pickup(it);
-
-    if(G.map[ny][nx]===T.STAIR){
-        if(G.floor>=5){ endGame(true); return; }
-        G.floor++;
-        msg(`⬇ Спуск на этаж ${G.floor}...`, 'info');
-        setupFloor();
-    }
-
-    fov(); tick();
-}
-
-function pickup(it){
-    if(G.p.inv.length>=5){ msg(`Инвентарь полон`, 'info'); return; }
-    G.p.inv.push({key:it.key});
-    G.it=G.it.filter(i=>i!==it);
-    msg(`📦 ${ITEMS[it.key].e} ${ITEMS[it.key].n}`, 'item');
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// ENEMY AI
-// ════════════════════════════════════════════════════════════════════════════
-
-function tick(){
-    G.turn++;
-    for(const en of G.en) if(!G.p.over) aiTurn(en);
-    ui(); draw();
-}
-
-function aiTurn(en){
-    if(!G.vis[en.y][en.x]){
-        if(Math.random()<.25){
-            const dirs=[[0,1],[0,-1],[1,0],[-1,0]];
-            const [dx,dy]=dirs[rng(4)];
-            const nx=en.x+dx, ny=en.y+dy;
-            if(walk(nx,ny) && !anyAt(nx,ny)){ en.x=nx; en.y=ny; }
-        }
-        return;
-    }
-    const dist=Math.abs(en.x-G.p.x)+Math.abs(en.y-G.p.y);
-    if(dist===1){ eAtk(en); return; }
-
-    const dx=Math.sign(G.p.x-en.x), dy=Math.sign(G.p.y-en.y);
-    if(dx&&walk(en.x+dx,en.y)&&!anyAt(en.x+dx,en.y)){ en.x+=dx; return; }
-    if(dy&&walk(en.x,en.y+dy)&&!anyAt(en.x,en.y+dy)){ en.y+=dy; }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// MESSAGES & UI
-// ════════════════════════════════════════════════════════════════════════════
-
-function msg(t,cls='info'){ G.msgs.unshift({t,c:cls}); if(G.msgs.length>50) G.msgs.pop(); }
-function $(id){ return document.getElementById(id); }
-
-function ui(){
-    const p=G.p, c=CLASSES[p.cls];
-    $('cls').textContent=c.name;
-    $('hp').textContent=p.hp; $('mhp').textContent=p.mhp;
-    $('atk').textContent=p.atk; $('def').textContent=p.def; $('crit').textContent=p.crit+'%';
-    $('lvl').textContent=p.lvl; $('xp').textContent=p.xp; $('xpn').textContent=p.xpn;
-    $('fl').textContent=G.floor; $('kl').textContent=p.kills;
-
-    // Health bar
-    const hpPct=p.hp/p.mhp;
-    const hpBar=$('hpb');
-    hpBar.style.width=(hpPct*100)+'%';
-    hpBar.style.background=hpPct>.5?'#4ade80':hpPct>.25?'#fbbf24':'#ff6b6b';
-
-    // XP bar
-    const xpPct=p.xp/p.xpn;
-    const xpBar=$('xpb');
-    xpBar.style.width=(xpPct*100)+'%';
-    xpBar.style.background='#9b59b6';
-
-    // Abilities
-    const abEl=$('abilities');
-    abEl.innerHTML=p.abilities.map(k=>{
-        const a=ABILITIES[k];
-        return `<div class="ability-icon" title="${a.name}">${a.emoji}</div>`;
-    }).join('');
-
-    // Inventory
-    const inv=$('inv');
-    if(!p.inv.length){ inv.innerHTML='<div class="inv-empty">Пусто</div>'; }
-    else inv.innerHTML=p.inv.map((it,i)=>{
-        const t=ITEMS[it.key];
-        const rareCol=RARITIES[t.rare];
-        return `<div class="inv-item" onclick="useItem(${i})" style="color:${rareCol}">
-            <span style="color:#444">[${i+1}]</span> ${t.e} <span>${t.n}</span>
-            <span class="rarity rarity-${t.rare}" style="color:${rareCol}">${t.rare}</span></div>`;
-    }).join('');
-
-    // Log
-    const log=$('log');
-    log.innerHTML=G.msgs.slice(0,25).map(m=>{
-        let cls='log-msg';
-        if(m.c==='damage') cls='log-msg msg-damage';
-        else if(m.c==='kill') cls='log-msg msg-kill';
-        else if(m.c==='item') cls='log-msg msg-item';
-        else if(m.c==='level') cls='log-msg msg-level';
-        else if(m.c==='special') cls='log-msg msg-special';
-        else cls='log-msg msg-info';
-        return `<div class="${cls}">${m.t}</div>`;
-    }).join('');
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// RENDERER
-// ════════════════════════════════════════════════════════════════════════════
-
-const TILE_CHARS={ 0:'#', 1:'·', 2:'📍' };
-const TILE_COLS={ 0:'#2a2a2a', 1:'#3a3a4a' };
-
-function draw(){
-    ctx.fillStyle='#0a0a0a';
-    ctx.fillRect(0,0,640,480);
-
-    const vcols=~~(640/TW), vrows=~~(480/TH);
-    const cx=Math.max(0,Math.min(G.p.x-~~(vcols/2.5), COLS-vcols));
-    const cy=Math.max(0,Math.min(G.p.y-~~(vrows/2.5), ROWS-vrows));
-
-    ctx.font=`bold ${TH-2}px "Courier New"`;
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
-
-    for(let vy=0;vy<vrows;vy++){
-        for(let vx=0;vx<vcols;vx++){
-            const wx=cx+vx, wy=cy+vy;
-            if(!inb(wx,wy)) continue;
-            const vis=G.vis[wy][wx], exp=G.exp[wy][wx];
-            if(!exp) continue;
-
-            const px=vx*TW+TW/2, py=vy*TH+TH/2;
-            const tile=G.map[wy][wx];
-
-            let bg, col;
-            if(!vis){ bg='#0a0a0a'; col='#1a1a2a'; }
-            else {
-                if(tile===T.WALL){ bg='#1a1a2a'; col='#444'; }
-                else if(tile===T.STAIR){ bg='#2a1a0a'; col='#ffd700'; }
-                else{ bg='#111'; col='#3a3a4a'; }
-            }
-
-            ctx.fillStyle=bg;
-            ctx.fillRect(vx*TW, vy*TH, TW, TH);
-            ctx.fillStyle=col;
-            ctx.font=`bold ${TH-4}px "Courier New"`;
-            ctx.fillText(TILE_CHARS[tile]||' ', px, py);
-
-            if(!vis) continue;
-
-            // items
-            const it=itemAt(wx,wy);
-            if(it){
-                ctx.fillStyle=RARITIES[ITEMS[it.key].rare];
-                ctx.font=`${TH-2}px Arial`;
-                ctx.fillText(ITEMS[it.key].e, px, py);
-            }
-
-            // enemies
-            const en=enemyAt(wx,wy);
-            if(en){
-                const et=ENEMIES[en.key];
-                ctx.fillStyle='#0d0d0d';
-                ctx.fillRect(vx*TW+1, vy*TH+2, TW-2, TH-2);
-                ctx.fillStyle=et.col;
-                ctx.font=`${TH-2}px Arial`;
-                ctx.fillText(et.e, px, py);
-
-                // hp bar
-                const bw=TW-2, f=en.hp/en.mhp;
-                ctx.fillStyle='#222'; ctx.fillRect(vx*TW+1, vy*TH, bw, 2);
-                ctx.fillStyle=f>.5?'#4ade80':f>.25?'#fbbf24':'#ff6b6b';
-                ctx.fillRect(vx*TW+1, vy*TH, ~~(bw*f), 2);
-            }
-        }
-    }
-
-    // player
-    const pvx=(G.p.x-cx)*TW, pvy=(G.p.y-cy)*TH;
-    ctx.fillStyle='#0d0d0d';
-    ctx.fillRect(pvx+1, pvy+2, TW-2, TH-2);
-    ctx.fillStyle='#4ade80';
-    ctx.font=`${TH-2}px Arial`;
-    ctx.fillText('@', pvx+TW/2, pvy+TH/2);
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 // GAME STATE
 // ════════════════════════════════════════════════════════════════════════════
 
-function endGame(won){
-    G.p.over=true;
-    $('mt').style.color=won?'#4ade80':'#ff6b6b';
-    $('mt').textContent=won?'⚔ ПОБЕДА! ⚔':'💀 ТЫ ПОГИБ';
-    $('ms').innerHTML=`
-        <p>Этаж: <span>${G.floor}/5</span></p>
-        <p>Уровень: <span>${G.p.lvl}</span></p>
-        <p>Убийств: <span>${G.p.kills}</span></p>
-        <p>Ходов: <span>${G.turn}</span></p>`;
-    $('ov').classList.add('on');
-    document.getElementById('btn-play').style.display='none';
-}
+let game = {
+    // Player state
+    hp: 40,
+    maxHp: 40,
+    block: 0,
+    deck: [],
+    hand: [],
+    discardPile: [],
+    energy: 3,
+    maxEnergy: 3,
 
-function startGame(){
-    $('ov').classList.remove('on');
-    document.getElementById('cs').innerHTML='';
-    G=mkState(G.selectedClass);
-    setupFloor();
-    msg('Ты входишь в подземелье...', 'info');
-    msg('Найди лестницу и спустись вниз', 'info');
-    msg('Пять этажей. Удачи!', 'info');
-    ui(); draw();
-}
+    // Battle state
+    battleNum: 0,
+    currentEnemy: null,
+    enemyIndex: 0,
+    turn: 0,
+    log: [],
 
-function newGame(){
-    $('ov').classList.add('on');
-    $('mt').style.color='#4ade80';
-    $('mt').textContent='ВЫБЕРИ КЛАСС';
-    $('ms').innerHTML='';
-
-    const cs=document.getElementById('cs');
-    cs.innerHTML=Object.entries(CLASSES).map(([k,c])=>`
-        <div class="class-btn" onclick="selectClass('${k}')">
-            <div class="name">${c.emoji} ${c.name}</div>
-            <div class="desc">${c.desc}</div>
-            <div style="font-size:11px; margin-top:8px; color:#888;">
-                HP: ${c.hp} | ATK: ${c.atk} | DEF: ${c.def}
-            </div>
-        </div>
-    `).join('');
-    document.getElementById('btn-play').style.display='block';
-}
-
-function selectClass(cls){
-    G={selectedClass:cls};
-    document.querySelectorAll('.class-btn').forEach(b=>b.style.borderColor='#333');
-    event.target.closest('.class-btn').style.borderColor='#4ade80';
-}
+    // Progression
+    killCount: 0,
+    cardsCollected: 0,
+    floor: 1,
+};
 
 // ════════════════════════════════════════════════════════════════════════════
-// INPUT & INIT
+// INITIALIZATION
 // ════════════════════════════════════════════════════════════════════════════
 
-document.addEventListener('keydown', e=>{
-    if(!G || !G.p || G.p.over) return;
-    const dir={
-        ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],
-        w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],
-        W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]
+function init() {
+    game.deck = [
+        { ...CARD_DEFS.strike },
+        { ...CARD_DEFS.strike },
+        { ...CARD_DEFS.defend },
+        { ...CARD_DEFS.defend },
+        { ...CARD_DEFS.defend },
+    ];
+    game.hp = 40;
+    game.maxHp = 40;
+    startNewBattle();
+}
+
+function startNewBattle() {
+    game.turn = 0;
+    game.block = 0;
+    game.log = [];
+    game.battleNum++;
+
+    // Spawn enemy
+    const enemies = Object.values(ENEMIES);
+    game.currentEnemy = {
+        ...enemies[Math.min(game.battleNum - 1, enemies.length - 1)],
+        hp: enemies[Math.min(game.battleNum - 1, enemies.length - 1)].hp,
+        block: 0,
+        actionIndex: 0,
     };
-    if(dir[e.key]){ e.preventDefault(); move(...dir[e.key]); }
-    else if(e.key==='.'){ tick(); }
-    else if(e.key>='1'&&e.key<='5'){ useItem(+e.key-1); }
-});
 
-canvas=document.getElementById('c');
-ctx=canvas.getContext('2d');
-G={};
-document.getElementById('info').textContent='Нажми ниже чтобы начать новую игру → ↓';
+    // Draw hand
+    game.discardPile = [];
+    drawCards(5);
+    addLog('Battle started!');
+    updateDisplay();
+}
 
-newGame();
+function drawCards(num) {
+    for (let i = 0; i < num; i++) {
+        if (game.deck.length === 0) {
+            game.deck = [...game.discardPile];
+            game.discardPile = [];
+            if (game.deck.length === 0) break;
+        }
+        const idx = Math.floor(Math.random() * game.deck.length);
+        game.hand.push(game.deck.splice(idx, 1)[0]);
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CARD PLAYING
+// ════════════════════════════════════════════════════════════════════════════
+
+function playCard(index) {
+    if (index >= game.hand.length) return;
+    const card = game.hand[index];
+    if (game.energy < card.cost) return;
+
+    game.energy -= card.cost;
+    game.hand.splice(index, 1);
+    game.discardPile.push(card);
+
+    // Apply effect
+    if (card.type === 'attack' || card.type === 'power') {
+        const dmg = card.effect.dmg;
+        game.currentEnemy.hp -= dmg;
+        addLog(`You play ${card.icon} ${card.name}: ${dmg} damage`);
+    } else if (card.type === 'skill') {
+        game.block += card.effect.block;
+        addLog(`You play ${card.icon} ${card.name}: +${card.effect.block} Block`);
+    }
+
+    updateDisplay();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TURN MANAGEMENT
+// ════════════════════════════════════════════════════════════════════════════
+
+function endTurn() {
+    game.turn++;
+    addLog(`--- End Turn ${game.turn} ---`);
+
+    // Enemy action
+    const action = game.currentEnemy.actions[game.currentEnemy.actionIndex % game.currentEnemy.actions.length];
+    game.currentEnemy.actionIndex++;
+
+    if (action === 'attack') {
+        const dmg = Math.max(1, game.currentEnemy.dmg - Math.floor(game.block / 2));
+        game.hp -= dmg;
+        addLog(`${game.currentEnemy.emoji} attacks: ${dmg} damage (block: ${game.block})`);
+        game.block = 0;
+    } else if (action === 'heavy_attack') {
+        const dmg = Math.max(1, game.currentEnemy.dmg * 2 - Math.floor(game.block / 2));
+        game.hp -= dmg;
+        addLog(`${game.currentEnemy.emoji} heavy attack: ${dmg} damage!`);
+        game.block = 0;
+    } else if (action === 'defend') {
+        game.currentEnemy.block += 8;
+        addLog(`${game.currentEnemy.emoji} braces: +8 block`);
+    }
+
+    // Check win/lose
+    if (game.currentEnemy.hp <= 0) {
+        win();
+        return;
+    }
+
+    if (game.hp <= 0) {
+        lose();
+        return;
+    }
+
+    // Draw cards
+    game.energy = game.maxEnergy;
+    drawCards(5);
+    addLog('New hand drawn');
+    updateDisplay();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// BATTLE OUTCOME
+// ════════════════════════════════════════════════════════════════════════════
+
+function win() {
+    game.killCount++;
+    game.cardsCollected++;
+    addLog(`${game.currentEnemy.emoji} defeated!`);
+
+    // Show reward
+    document.getElementById('reward-modal').classList.add('on');
+    const rewards = document.getElementById('reward-cards');
+    rewards.innerHTML = '';
+
+    // Generate 3 random cards
+    const cardKeys = Object.keys(CARD_DEFS).filter(k => !k.includes('weakened'));
+    for (let i = 0; i < 3; i++) {
+        const key = cardKeys[Math.floor(Math.random() * cardKeys.length)];
+        const card = CARD_DEFS[key];
+        rewards.innerHTML += `
+            <div class="reward-card" onclick="addCardToDeck('${key}')">
+                <div class="reward-icon">${card.icon}</div>
+                <div class="reward-name">${card.name}</div>
+                <div class="reward-desc">Cost: ${card.cost}</div>
+            </div>
+        `;
+    }
+}
+
+function addCardToDeck(cardKey) {
+    game.deck.push({ ...CARD_DEFS[cardKey] });
+    document.getElementById('reward-modal').classList.remove('on');
+    nextBattle();
+}
+
+function nextBattle() {
+    if (game.battleNum >= 6) {
+        endGame(true);
+    } else {
+        game.floor = Math.floor(game.battleNum / 3) + 1;
+        startNewBattle();
+    }
+}
+
+function lose() {
+    addLog('You were defeated!');
+    setTimeout(() => {
+        document.getElementById('battle-screen').style.display = 'none';
+        endGame(false);
+    }, 1000);
+}
+
+function endGame(won) {
+    const modal = document.getElementById('gameover-modal');
+    const title = document.getElementById('gameover-title');
+    title.textContent = won ? '🎉 VICTORY!' : '💀 DEFEAT';
+    title.style.color = won ? '#4ade80' : '#ff6b6b';
+
+    document.getElementById('stat-kills').textContent = game.killCount;
+    document.getElementById('stat-cards').textContent = game.cardsCollected;
+    document.getElementById('stat-decksize').textContent = game.deck.length + game.discardPile.length;
+    document.getElementById('stat-floor').textContent = game.floor;
+
+    modal.classList.add('on');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DISPLAY UPDATE
+// ════════════════════════════════════════════════════════════════════════════
+
+function updateDisplay() {
+    // Enemy
+    const enemy = game.currentEnemy;
+    const enemyHpPct = Math.max(0, enemy.hp / 50);
+    document.getElementById('enemy-emoji').textContent = enemy.emoji;
+    document.getElementById('enemy-name').textContent = enemy.name;
+    document.getElementById('enemy-hp').textContent = Math.max(0, enemy.hp);
+    document.getElementById('enemy-maxhp').textContent = enemy.hp > 0 ? 50 : 0;
+    const enemyBar = document.getElementById('enemy-health-bar');
+    enemyBar.style.width = (enemyHpPct * 100) + '%';
+    enemyBar.className = 'bar-fill ' + (enemyHpPct > 0.5 ? '' : enemyHpPct > 0.25 ? 'low' : 'critical');
+    enemyBar.textContent = Math.max(0, Math.ceil(enemy.hp));
+
+    // Enemy intent
+    const nextAction = enemy.actions[enemy.actionIndex % enemy.actions.length];
+    let intentText = '';
+    if (nextAction === 'attack') intentText = '⚔️ Attack (2)';
+    else if (nextAction === 'heavy_attack') intentText = '💥 Heavy Attack (4)';
+    else if (nextAction === 'defend') intentText = '🛡️ Defend (+8)';
+    document.getElementById('enemy-intent').innerHTML = `<div class="icon">${intentText.split(' ')[0]}</div>${intentText.split(' ').slice(1).join(' ')}`;
+
+    // Player
+    const hpPct = game.hp / game.maxHp;
+    document.getElementById('player-hp').textContent = game.hp;
+    document.getElementById('player-maxhp').textContent = game.maxHp;
+    document.getElementById('player-block').textContent = game.block;
+    const playerBar = document.getElementById('player-health-bar');
+    playerBar.style.width = (hpPct * 100) + '%';
+    playerBar.className = 'bar-fill ' + (hpPct > 0.5 ? '' : hpPct > 0.25 ? 'low' : 'critical');
+
+    // Energy
+    document.getElementById('energy').textContent = game.energy;
+    let energyHtml = '';
+    for (let i = 0; i < game.maxEnergy; i++) {
+        energyHtml += `<div class="energy-orb ${i >= game.energy ? 'empty' : ''}"></div>`;
+    }
+    document.getElementById('energy-bar').innerHTML = energyHtml;
+
+    // Hand
+    const handEl = document.getElementById('hand');
+    handEl.innerHTML = '';
+    game.hand.forEach((card, i) => {
+        const canPlay = game.energy >= card.cost;
+        handEl.innerHTML += `
+            <div class="card ${!canPlay ? 'disabled' : ''}" ${canPlay ? `onclick="playCard(${i})"` : ''}>
+                <div class="card-cost">${card.cost}</div>
+                <div class="card-icon">${card.icon}</div>
+                <div class="card-name">${card.name}</div>
+                <div class="card-desc">${card.effect.dmg ? `${card.effect.dmg} damage` : `+${card.effect.block} block`}</div>
+            </div>
+        `;
+    });
+
+    // Log
+    const logEl = document.getElementById('log');
+    logEl.innerHTML = game.log.slice(-10).reverse().map(m =>
+        `<div class="log-msg ${m.important ? 'important' : ''}">${m.text}</div>`
+    ).join('');
+}
+
+function addLog(text, important = false) {
+    game.log.push({ text, important });
+}
+
+// Start game
+init();
 </script>
+
 </body>
 </html>
