@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Колода Силы — Карточный рогалик</title>
+    <title>Колода Силы v4 — Полный рогалик</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
             color: #e0e0e0;
@@ -17,77 +16,72 @@
             min-height: 100vh;
             padding: 16px;
         }
-
-        .container {
-            width: 100%;
-            max-width: 1200px;
-        }
-
+        .container { width: 100%; max-width: 1300px; }
         h1 {
             text-align: center;
             color: #ff6b6b;
             font-size: 32px;
             margin-bottom: 12px;
             text-shadow: 0 0 20px #ff6b6b88;
-            letter-spacing: 4px;
         }
-
-        .info { text-align: center; color: #666; font-size: 12px; margin-bottom: 16px; }
-
-        .battle-screen {
+        .header-info {
             display: flex;
-            gap: 30px;
-            margin-bottom: 20px;
+            justify-content: space-around;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: #888;
         }
+        .info-box { background: #111; padding: 8px 16px; border-radius: 4px; }
+        .info-box span { color: #4ade80; font-weight: bold; }
 
+        .main-layout { display: flex; gap: 20px; margin-bottom: 20px; }
+        .battle-area { flex: 2; }
+        .sidebar { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+        .battle-screen { display: flex; gap: 20px; }
         .enemy-side, .player-side { flex: 1; }
 
         .panel {
             background: linear-gradient(135deg, #111 0%, #1a1a2e 100%);
             border: 2px solid #333;
-            border-top: 1px solid #444;
-            padding: 20px;
+            padding: 16px;
             border-radius: 6px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
-
         .panel h3 {
             color: #ff6b6b;
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
         }
 
         .enemy-display {
             text-align: center;
-            padding: 30px;
+            padding: 20px;
             background: #0a0a0a;
             border-radius: 6px;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
-
-        .enemy-emoji { font-size: 80px; margin-bottom: 15px; }
-        .enemy-name { font-size: 18px; color: #ff6b6b; margin-bottom: 10px; }
+        .enemy-emoji { font-size: 70px; margin: 10px 0; }
+        .enemy-name { font-size: 16px; color: #ff6b6b; margin-bottom: 8px; }
 
         .health-bar {
             display: flex;
-            gap: 10px;
-            margin: 15px 0;
+            gap: 8px;
+            margin: 10px 0;
             align-items: center;
         }
-
         .bar {
             flex: 1;
-            height: 24px;
+            height: 20px;
             background: #222;
             border: 1px solid #444;
-            border-radius: 4px;
+            border-radius: 3px;
             overflow: hidden;
         }
-
         .bar-fill {
             height: 100%;
             background: linear-gradient(90deg, #4ade80, #2ecc71);
@@ -95,11 +89,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: bold;
             color: #000;
         }
-
         .bar-fill.low { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
         .bar-fill.critical { background: linear-gradient(90deg, #ff6b6b, #ef4444); }
 
@@ -107,164 +100,157 @@
             background: #1a1a2e;
             border: 1px solid #333;
             border-radius: 4px;
-            padding: 12px;
+            padding: 8px;
             text-align: center;
-            font-size: 14px;
-            margin-top: 10px;
+            font-size: 12px;
             color: #fbbf24;
             font-weight: bold;
+        }
+
+        .effects {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+            font-size: 20px;
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 15px;
+            gap: 10px;
+            margin-bottom: 12px;
         }
-
         .stat-box {
             background: #0a0a0a;
             border: 1px solid #333;
-            padding: 12px;
+            padding: 10px;
             border-radius: 4px;
             text-align: center;
+            font-size: 13px;
         }
-
-        .stat-label {
-            color: #888;
-            font-size: 11px;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-
-        .stat-value {
-            color: #4ade80;
-            font-size: 20px;
-            font-weight: bold;
-        }
+        .stat-label { color: #888; font-size: 10px; text-transform: uppercase; }
+        .stat-value { color: #4ade80; font-size: 18px; font-weight: bold; }
 
         .hand {
             display: flex;
-            gap: 12px;
-            margin-top: 20px;
-            min-height: 160px;
+            gap: 10px;
+            margin-top: 12px;
             flex-wrap: wrap;
             justify-content: center;
-            align-items: flex-start;
+            min-height: 140px;
         }
-
         .card {
-            width: 110px;
+            width: 100px;
             background: linear-gradient(135deg, #1a1a2e, #0f0f1e);
             border: 2px solid #4ade80;
-            border-radius: 6px;
-            padding: 12px;
+            border-radius: 5px;
+            padding: 10px;
             cursor: pointer;
             text-align: center;
             transition: all 0.2s;
             position: relative;
         }
-
         .card:hover {
-            transform: translateY(-8px);
+            transform: translateY(-6px);
             border-color: #22c55e;
-            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
         }
-
-        .card.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .card.disabled:hover {
-            transform: none;
-            border-color: #4ade80;
-            box-shadow: none;
-        }
-
+        .card.disabled { opacity: 0.4; cursor: not-allowed; }
+        .card.disabled:hover { transform: none; box-shadow: none; }
         .card-cost {
             background: #ff6b6b;
-            color: #fff;
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             position: absolute;
-            top: 8px;
-            right: 8px;
-            font-size: 12px;
+            top: 6px;
+            right: 6px;
+            font-size: 11px;
         }
+        .card-rarity {
+            font-size: 8px;
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        .rare { color: #4fc3f7; background: rgba(79, 195, 247, 0.2); }
+        .epic { color: #9b59b6; background: rgba(155, 89, 182, 0.2); }
+        .legend { color: #ffd700; background: rgba(255, 215, 0, 0.2); }
 
-        .card-icon { font-size: 32px; margin: 8px 0; }
-        .card-name { font-size: 11px; color: #e0e0e0; margin-bottom: 6px; font-weight: bold; }
-        .card-desc { font-size: 10px; color: #888; }
+        .card-icon { font-size: 28px; margin: 6px 0; }
+        .card-name { font-size: 10px; color: #e0e0e0; font-weight: bold; }
+        .card-desc { font-size: 9px; color: #888; margin-top: 4px; }
 
         .energy-display {
             text-align: center;
-            font-size: 18px;
-            margin-bottom: 15px;
+            font-size: 16px;
             padding: 10px;
             background: #0a0a0a;
             border-radius: 4px;
+            margin-bottom: 12px;
         }
-
-        .energy-bar {
-            display: flex;
-            gap: 4px;
-            justify-content: center;
-            margin-top: 8px;
-        }
-
+        .energy-bar { display: flex; gap: 3px; justify-content: center; margin-top: 6px; }
         .energy-orb {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             background: #4ade80;
             border: 1px solid #22c55e;
         }
-
-        .energy-orb.empty {
-            background: #222;
-            border-color: #333;
-        }
+        .energy-orb.empty { background: #222; border-color: #333; }
 
         .action-button {
-            display: block;
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             background: linear-gradient(135deg, #ff6b6b, #ff8c42);
             color: #fff;
             border: none;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-top: 12px;
-            transition: all 0.3s;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+        .action-button:hover { transform: scale(1.03); box-shadow: 0 0 15px rgba(255,107,107,0.4); }
+        .action-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .relics {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .relic-icon {
+            width: 32px;
+            height: 32px;
+            background: #0a0a0a;
+            border: 1px solid #4ade80;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: help;
+            title: "Relic";
         }
 
-        .action-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        .log {
+            height: 120px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.4;
         }
-
-        .action-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .log-msg {
-            padding: 4px 0;
-            font-size: 12px;
-            line-height: 1.5;
-            color: #888;
-        }
-
+        .log-msg { padding: 2px 0; color: #888; }
         .log-msg.important { color: #ff6b6b; font-weight: bold; }
 
         .modal {
@@ -276,7 +262,6 @@
             align-items: center;
             z-index: 99;
         }
-
         .modal.on { display: flex; }
 
         .modal-content {
@@ -285,25 +270,23 @@
             padding: 40px;
             text-align: center;
             border-radius: 6px;
-            max-width: 600px;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
-
         .modal-content h2 {
             font-size: 32px;
             color: #4ade80;
             margin-bottom: 20px;
         }
 
-        .rewards {
-            display: flex;
-            gap: 16px;
-            margin: 30px 0;
-            flex-wrap: wrap;
-            justify-content: center;
+        .choices {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin: 20px 0;
         }
-
-        .reward-card {
-            width: 140px;
+        .choice-btn {
             background: #0a0a0a;
             border: 2px solid #4ade80;
             border-radius: 6px;
@@ -312,204 +295,230 @@
             text-align: center;
             transition: all 0.2s;
         }
-
-        .reward-card:hover {
+        .choice-btn:hover {
             border-color: #22c55e;
-            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
         }
-
-        .reward-icon { font-size: 48px; margin-bottom: 10px; }
-        .reward-name { font-size: 13px; color: #e0e0e0; margin-bottom: 6px; font-weight: bold; }
-        .reward-desc { font-size: 11px; color: #888; }
+        .choice-icon { font-size: 40px; margin-bottom: 8px; }
+        .choice-name { font-size: 12px; color: #e0e0e0; font-weight: bold; }
+        .choice-desc { font-size: 10px; color: #888; margin-top: 4px; }
 
         .stat-summary {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 12px;
             margin: 20px 0;
         }
-
         .stat-summary-box {
             background: #0a0a0a;
-            padding: 16px;
+            padding: 12px;
             border-radius: 4px;
         }
+        .stat-summary-label { color: #888; font-size: 11px; text-transform: uppercase; }
+        .stat-summary-value { color: #4ade80; font-size: 20px; font-weight: bold; }
 
-        .stat-summary-label {
-            color: #888;
-            font-size: 12px;
-            text-transform: uppercase;
-            margin-bottom: 6px;
-        }
-
-        .stat-summary-value {
-            color: #4ade80;
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        button.btn-start {
-            padding: 12px 32px;
-            background: linear-gradient(135deg, #ff6b6b, #ff8c42);
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-top: 20px;
-        }
-
-        button.btn-start:hover { transform: scale(1.05); }
+        button.btn { padding: 10px 24px; background: linear-gradient(135deg, #ff6b6b, #ff8c42); color: #fff; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 16px; }
+        button.btn:hover { transform: scale(1.05); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🃏 КОЛОДА СИЛЫ 🃏</h1>
-    <div class="info">Карточный рогалик | Этаж: <span id="floor-display">1</span>/3</div>
+    <h1>🃏 КОЛОДА СИЛЫ v4 🃏</h1>
+    <div class="header-info">
+        <div class="info-box">Этаж <span id="floor">1</span>/3</div>
+        <div class="info-box">Боёв <span id="battles">0</span>/9</div>
+        <div class="info-box">Золото <span id="gold">0</span>💰</div>
+        <div class="info-box">Колода <span id="decksize">5</span> карт</div>
+    </div>
 
-    <!-- BATTLE SCREEN -->
-    <div id="battle-screen">
-        <div class="battle-screen">
-            <!-- Enemy -->
-            <div class="enemy-side">
-                <div class="enemy-display">
-                    <div class="enemy-emoji" id="enemy-emoji"></div>
-                    <div class="enemy-name" id="enemy-name"></div>
-                    <div class="health-bar">
-                        <div class="bar">
-                            <div class="bar-fill" id="enemy-health-bar"></div>
+    <div class="main-layout">
+        <!-- BATTLE -->
+        <div class="battle-area">
+            <div id="battle-screen">
+                <div class="battle-screen">
+                    <!-- Enemy -->
+                    <div class="enemy-side">
+                        <div class="enemy-display">
+                            <div class="enemy-emoji" id="enemy-emoji"></div>
+                            <div class="enemy-name" id="enemy-name"></div>
+                            <div class="health-bar">
+                                <div class="bar">
+                                    <div class="bar-fill" id="enemy-health-bar"></div>
+                                </div>
+                                <div style="min-width: 45px; text-align: center; font-size: 12px;">
+                                    <span id="enemy-hp">0</span> / <span id="enemy-maxhp">0</span>
+                                </div>
+                            </div>
+                            <div class="effects" id="enemy-effects"></div>
+                            <div class="intent" id="enemy-intent"></div>
                         </div>
-                        <div style="min-width: 50px; text-align: center;">
-                            <span id="enemy-hp">0</span> / <span id="enemy-maxhp">0</span>
+                        <div class="panel">
+                            <h3>📜 Журнал боя</h3>
+                            <div class="log" id="log"></div>
                         </div>
                     </div>
-                    <div class="intent" id="enemy-intent"></div>
-                </div>
 
-                <div class="panel">
-                    <h3>📜 Журнал боя</h3>
-                    <div id="log" style="height: 150px; overflow-y: auto; font-size: 12px;">
+                    <!-- Player -->
+                    <div class="player-side">
+                        <div class="panel">
+                            <h3>⚔ Твоя статистика</h3>
+                            <div class="stats-grid">
+                                <div class="stat-box">
+                                    <div class="stat-label">HP</div>
+                                    <div style="color: #4ade80; font-size: 16px; font-weight: bold;">
+                                        <span id="player-hp">0</span>/<span id="player-maxhp">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-label">Защита</div>
+                                    <div style="color: #4fc3f7; font-size: 16px; font-weight: bold;">
+                                        <span id="player-block">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="health-bar">
+                                <div class="bar">
+                                    <div class="bar-fill" id="player-health-bar"></div>
+                                </div>
+                            </div>
+                            <div class="effects" id="player-effects"></div>
+                        </div>
+
+                        <div class="panel">
+                            <div class="energy-display">
+                                ⚡ Энергия: <span id="energy">3</span>/3
+                                <div class="energy-bar" id="energy-bar"></div>
+                            </div>
+                            <button class="action-button" onclick="endTurn()">Закончить ход</button>
+                        </div>
+
+                        <div class="panel">
+                            <h3>🎴 Рука</h3>
+                            <div class="hand" id="hand"></div>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Player -->
-            <div class="player-side">
-                <div class="panel">
-                    <h3>⚔ Твоя статистика</h3>
-                    <div class="stats-grid">
-                        <div class="stat-box">
-                            <div class="stat-label">HP</div>
-                            <div style="color: #4ade80; font-size: 18px; font-weight: bold;">
-                                <span id="player-hp">0</span> / <span id="player-maxhp">0</span>
-                            </div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-label">Защита</div>
-                            <div style="color: #4fc3f7; font-size: 18px; font-weight: bold;">
-                                <span id="player-block">0</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="health-bar">
-                        <div class="bar">
-                            <div class="bar-fill" id="player-health-bar"></div>
-                        </div>
-                    </div>
-                </div>
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="panel">
+                <h3>✨ Реликвии</h3>
+                <div class="relics" id="relics">Нет</div>
+            </div>
 
-                <div class="panel">
-                    <div class="energy-display">
-                        ⚡ Энергия: <span id="energy">3</span> / 3
-                        <div class="energy-bar" id="energy-bar"></div>
+            <div class="panel">
+                <h3>📊 Статы</h3>
+                <div class="stats-grid" style="margin-bottom: 0;">
+                    <div class="stat-box">
+                        <div class="stat-label">Урон</div>
+                        <div class="stat-value" id="stat-dmg">0</div>
                     </div>
-                    <button class="action-button" id="end-turn-btn" onclick="endTurn()">Закончить ход</button>
-                </div>
-
-                <div class="panel">
-                    <h3>🎴 Рука</h3>
-                    <div class="hand" id="hand"></div>
+                    <div class="stat-box">
+                        <div class="stat-label">Защита</div>
+                        <div class="stat-value" id="stat-def">0</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- REWARD MODAL -->
-    <div class="modal" id="reward-modal">
-        <div class="modal-content">
-            <h2>🎉 Победа!</h2>
-            <p>Выбери карту для добавления в колоду</p>
-            <div class="rewards" id="reward-cards"></div>
-            <button class="btn-start" onclick="nextBattle()">Далее</button>
-        </div>
+<!-- REWARD MODAL -->
+<div class="modal" id="reward-modal">
+    <div class="modal-content">
+        <h2>🎉 Победа!</h2>
+        <p id="reward-msg">Выбери карту для добавления в колоду</p>
+        <div class="choices" id="reward-choices"></div>
+        <button class="btn" onclick="proceedAfterReward()">Далее</button>
     </div>
+</div>
 
-    <!-- GAME OVER MODAL -->
-    <div class="modal" id="gameover-modal">
-        <div class="modal-content">
-            <h2 id="gameover-title"></h2>
-            <div class="stat-summary">
-                <div class="stat-summary-box">
-                    <div class="stat-summary-label">Врагов побеждено</div>
-                    <div class="stat-summary-value" id="stat-kills">0</div>
-                </div>
-                <div class="stat-summary-box">
-                    <div class="stat-summary-label">Карт собрано</div>
-                    <div class="stat-summary-value" id="stat-cards">0</div>
-                </div>
-                <div class="stat-summary-box">
-                    <div class="stat-summary-label">Размер колоды</div>
-                    <div class="stat-summary-value" id="stat-decksize">0</div>
-                </div>
-                <div class="stat-summary-box">
-                    <div class="stat-summary-label">Этаж достигнут</div>
-                    <div class="stat-summary-value" id="stat-floor">0</div>
-                </div>
+<!-- PATH CHOICE MODAL -->
+<div class="modal" id="path-modal">
+    <div class="modal-content">
+        <h2>🛤️ Выбери путь</h2>
+        <p>Куда ты хочешь пойти дальше?</p>
+        <div class="choices" id="path-choices"></div>
+    </div>
+</div>
+
+<!-- GAME OVER MODAL -->
+<div class="modal" id="gameover-modal">
+    <div class="modal-content">
+        <h2 id="gameover-title"></h2>
+        <div class="stat-summary">
+            <div class="stat-summary-box">
+                <div class="stat-summary-label">Врагов побеждено</div>
+                <div class="stat-summary-value" id="stat-kills">0</div>
             </div>
-            <button class="btn-start" onclick="location.reload()">Играть снова</button>
+            <div class="stat-summary-box">
+                <div class="stat-summary-label">Этажей преодолено</div>
+                <div class="stat-summary-value" id="stat-floors">0</div>
+            </div>
+            <div class="stat-summary-box">
+                <div class="stat-summary-label">Реликвий собрано</div>
+                <div class="stat-summary-value" id="stat-relics">0</div>
+            </div>
+            <div class="stat-summary-box">
+                <div class="stat-summary-label">Итого золота</div>
+                <div class="stat-summary-value" id="stat-total-gold">0</div>
+            </div>
         </div>
+        <button class="btn" onclick="location.reload()">Играть снова</button>
     </div>
 </div>
 
 <script>
 // ════════════════════════════════════════════════════════════════════════════
-// КАРТЫ
+// КАРТЫ С РЕДКОСТЬЮ И ЭФФЕКТАМИ
 // ════════════════════════════════════════════════════════════════════════════
 
 const CARD_DEFS = {
-    // Атака
-    strike: { name: 'Удар', icon: '⚔', cost: 1, type: 'attack', dmg: 6, desc: 'Наноси 6 урона' },
-    heavy_strike: { name: 'Мощный удар', icon: '💥', cost: 2, type: 'attack', dmg: 13, desc: 'Наноси 13 урона' },
-    pummel: { name: 'Комбо', icon: '👊', cost: 1, type: 'attack', dmg: 4, multi: 2, desc: 'Удари 2 раза по 4 урона' },
+    // Common атаки
+    strike: { name: 'Удар', icon: '⚔', cost: 1, type: 'attack', dmg: 6, rarity: 'common', desc: '6 урона' },
+    pummel: { name: 'Комбо', icon: '👊', cost: 1, type: 'attack', dmg: 3, hits: 2, rarity: 'common', desc: '3x2 урона' },
 
-    // Защита
-    defend: { name: 'Защита', icon: '🛡', cost: 1, type: 'skill', block: 5, desc: '+5 защиты' },
-    iron_skin: { name: 'Железная кожа', icon: '🪨', cost: 1, type: 'skill', block: 7, desc: '+7 защиты' },
-    brace: { name: 'Стойка', icon: '🔒', cost: 0, type: 'skill', block: 3, desc: '+3 защиты (бесплатная)' },
+    // Common защита
+    defend: { name: 'Защита', icon: '🛡', cost: 1, type: 'skill', block: 5, rarity: 'common', desc: '+5 защиты' },
+    brace: { name: 'Стойка', icon: '🔒', cost: 0, type: 'skill', block: 3, rarity: 'common', desc: '+3 защиты (бесплатно)' },
 
-    // Мощные
-    fireball: { name: 'Огненный шар', icon: '🔥', cost: 2, type: 'power', dmg: 10, desc: 'Урон по области' },
-    double_strike: { name: 'Двойной удар', icon: '⚡', cost: 1, type: 'attack', dmg: 3, multi: 2, desc: '2x3 урона' },
-    shockwave: { name: 'Волна', icon: '〰', cost: 3, type: 'power', dmg: 15, desc: 'Мощный удар (15 урона)' },
+    // Rare атаки
+    heavy_strike: { name: 'Мощный удар', icon: '💥', cost: 2, type: 'attack', dmg: 13, rarity: 'rare', desc: '13 урона' },
+    poison_strike: { name: 'Ядовитый удар', icon: '☠', cost: 2, type: 'attack', dmg: 8, poison: 2, rarity: 'rare', desc: '8 урона + яд (2)' },
 
-    // Комбо
-    reinforce: { name: 'Усиление', icon: '💪', cost: 1, type: 'skill', block: 4, next_dmg_plus: 3, desc: '+4 защиты, след атака +3' },
+    // Rare защита
+    iron_skin: { name: 'Железная кожа', icon: '🪨', cost: 1, type: 'skill', block: 7, rarity: 'rare', desc: '+7 защиты' },
+    fortify: { name: 'Укрепление', icon: '🏰', cost: 2, type: 'skill', block: 10, rarity: 'rare', desc: '+10 защиты' },
+
+    // Epic
+    fireball: { name: 'Огненный шар', icon: '🔥', cost: 2, type: 'power', dmg: 10, burn: 1, rarity: 'epic', desc: '10 урона + огонь (1)' },
+    shockwave: { name: 'Волна', icon: '〰', cost: 3, type: 'power', dmg: 15, rarity: 'epic', desc: '15 урона' },
+
+    // Legend
+    inferno: { name: 'Инферно', icon: '🌪', cost: 3, type: 'power', dmg: 20, burn: 3, rarity: 'legend', desc: '20 урона + огонь (3)' },
 };
 
 const ENEMIES = {
-    goblin: { name: 'Гоблин', emoji: '👹', hp: 12, dmg: 2, actions: ['attack', 'attack', 'defend'], floor: 1 },
-    bat: { name: 'Летучая мышь', emoji: '🦇', hp: 8, dmg: 1, actions: ['attack', 'attack', 'attack'], floor: 1 },
-    skeleton: { name: 'Скелет', emoji: '💀', hp: 16, dmg: 3, actions: ['attack', 'attack', 'defend'], floor: 1 },
-    orc: { name: 'Орк', emoji: '🗡', hp: 22, dmg: 4, actions: ['heavy_attack', 'defend', 'attack'], floor: 2 },
-    zombie: { name: 'Зомби', emoji: '🧟', hp: 20, dmg: 3, actions: ['attack', 'attack', 'defend'], floor: 2 },
-    troll: { name: 'Тролль', emoji: '👹', hp: 28, dmg: 5, actions: ['heavy_attack', 'heavy_attack', 'defend'], floor: 2 },
-    wyvern: { name: 'Виверна', emoji: '🐉', hp: 32, dmg: 6, actions: ['attack', 'heavy_attack', 'defend'], floor: 2 },
-    demon: { name: 'Демон', emoji: '😈', hp: 45, dmg: 7, actions: ['heavy_attack', 'attack', 'defend'], floor: 3, isBoss: true },
-    dragon: { name: 'Дракон', emoji: '🐲', hp: 60, dmg: 8, actions: ['heavy_attack', 'heavy_attack', 'defend'], floor: 3, isBoss: true },
+    goblin: { name: 'Гоблин', emoji: '👹', hp: 12, dmg: 2, actions: ['attack','attack','defend'], floor: 1 },
+    bat: { name: 'Летучая мышь', emoji: '🦇', hp: 8, dmg: 1, actions: ['attack','attack','attack'], floor: 1 },
+    skeleton: { name: 'Скелет', emoji: '💀', hp: 16, dmg: 3, actions: ['attack','attack','defend'], floor: 1 },
+    orc: { name: 'Орк', emoji: '🗡', hp: 22, dmg: 4, actions: ['heavy','defend','attack'], floor: 2 },
+    zombie: { name: 'Зомби', emoji: '🧟', hp: 20, dmg: 3, actions: ['attack','attack','defend'], floor: 2 },
+    troll: { name: 'Тролль', emoji: '👹', hp: 28, dmg: 5, actions: ['heavy','heavy','defend'], floor: 2 },
+    wyvern: { name: 'Виверна', emoji: '🐉', hp: 32, dmg: 6, actions: ['attack','heavy','defend'], floor: 2 },
+    demon: { name: 'Демон', emoji: '😈', hp: 45, dmg: 7, actions: ['heavy','attack','defend'], floor: 3, boss: 1 },
+    dragon: { name: 'Дракон', emoji: '🐲', hp: 60, dmg: 8, actions: ['heavy','heavy','defend'], floor: 3, boss: 1 },
+};
+
+const RELICS = {
+    hp_boost: { name: 'Амулет жизни', icon: '❤', desc: '+20 HP', effect: (g) => g.maxHp += 20 },
+    damage_boost: { name: 'Перчатки воина', icon: '🥊', desc: '+2 урона', effect: (g) => g.dmg_bonus += 2 },
+    gold_plus: { name: 'Мешочек золота', icon: '💰', desc: '+25% золота', effect: (g) => g.gold_mult = 1.25 },
+    energy_plus: { name: 'Магический камень', icon: '💎', desc: '+1 энергия за ход', effect: (g) => g.maxEnergy += 1 },
+    draw_plus: { name: 'Книга знаний', icon: '📖', desc: '+1 карта в руке', effect: (g) => g.draw_per_turn += 1 },
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -517,23 +526,26 @@ const ENEMIES = {
 // ════════════════════════════════════════════════════════════════════════════
 
 let game = {
-    hp: 50,
-    maxHp: 50,
-    block: 0,
-    deck: [],
-    hand: [],
-    discardPile: [],
-    energy: 3,
-    maxEnergy: 3,
+    // Player
+    hp: 50, maxHp: 50, block: 0,
+    deck: [], hand: [], discard: [],
+    energy: 3, maxEnergy: 3,
+    gold: 0, gold_mult: 1,
+    dmg_bonus: 0,
+    draw_per_turn: 5,
+    relics: [],
 
-    battleNum: 0,
-    currentEnemy: null,
+    // Effects
+    poison: 0, burn: 0,
+
+    // Battle
+    battle: 0, floor: 1,
+    enemy: null,
     turn: 0,
     log: [],
 
-    killCount: 0,
-    cardsCollected: 0,
-    floor: 1,
+    // Stats
+    kills: 0,
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -550,46 +562,39 @@ function init() {
     ];
     game.hp = 50;
     game.maxHp = 50;
-    startNewBattle();
+    startBattle();
 }
 
-function startNewBattle() {
+function startBattle() {
     game.turn = 0;
     game.block = 0;
+    game.poison = 0;
+    game.burn = 0;
     game.log = [];
-    game.battleNum++;
+    game.battle++;
+    game.floor = Math.floor((game.battle - 1) / 3) + 1;
 
-    // Выбор врага
     const floorEnemies = Object.values(ENEMIES).filter(e => e.floor <= game.floor);
     let enemy;
-    if (game.battleNum === 1) {
-        enemy = ENEMIES.goblin;
-    } else if (game.battleNum % 3 === 0 && game.floor >= 2) {
-        // Боссы через 3 боя
-        const bosses = floorEnemies.filter(e => e.isBoss);
-        enemy = bosses[Math.floor(Math.random() * bosses.length)] || floorEnemies[floorEnemies.length - 1];
+    if (game.battle % 3 === 0 && game.floor >= 2) {
+        const bosses = floorEnemies.filter(e => e.boss);
+        enemy = bosses.length > 0 ? bosses[Math.floor(Math.random() * bosses.length)] : floorEnemies[floorEnemies.length - 1];
     } else {
         enemy = floorEnemies[Math.floor(Math.random() * floorEnemies.length)];
     }
 
-    game.currentEnemy = {
-        ...enemy,
-        hp: enemy.hp,
-        block: 0,
-        actionIndex: 0,
-    };
-
-    game.discardPile = [];
-    drawCards(5);
-    addLog(`Встреча с ${game.currentEnemy.emoji} ${game.currentEnemy.name}!`);
+    game.enemy = { ...enemy, hp: enemy.hp, block: 0, idx: 0 };
+    game.discard = [];
+    drawCards(game.draw_per_turn);
+    addLog(`💀 Встреча с ${game.enemy.emoji} ${game.enemy.name}!`);
     updateDisplay();
 }
 
 function drawCards(num) {
     for (let i = 0; i < num; i++) {
         if (game.deck.length === 0) {
-            game.deck = [...game.discardPile];
-            game.discardPile = [];
+            game.deck = [...game.discard];
+            game.discard = [];
             if (game.deck.length === 0) break;
         }
         const idx = Math.floor(Math.random() * game.deck.length);
@@ -601,31 +606,30 @@ function drawCards(num) {
 // ИГРОВАЯ ЛОГИКА
 // ════════════════════════════════════════════════════════════════════════════
 
-function playCard(index) {
-    if (index >= game.hand.length) return;
-    const card = game.hand[index];
+function playCard(i) {
+    if (i >= game.hand.length) return;
+    const card = game.hand[i];
     if (game.energy < card.cost) return;
 
     game.energy -= card.cost;
-    game.hand.splice(index, 1);
-    game.discardPile.push(card);
+    game.hand.splice(i, 1);
+    game.discard.push(card);
 
     if (card.type === 'attack' || card.type === 'power') {
-        const dmg = card.dmg;
-        if (card.multi) {
-            for (let i = 0; i < card.multi; i++) {
-                game.currentEnemy.hp -= dmg;
-            }
-            addLog(`${card.icon} ${card.name}: ${dmg} x${card.multi} = ${dmg * card.multi} урона`);
+        let dmg = card.dmg + game.dmg_bonus;
+        if (card.hits) {
+            dmg *= card.hits;
+            addLog(`${card.icon} ${card.name}: ${card.dmg}x${card.hits} = ${dmg} урона`);
         } else {
-            game.currentEnemy.hp -= dmg;
             addLog(`${card.icon} ${card.name}: ${dmg} урона`);
         }
+        game.enemy.hp -= dmg;
+        if (card.poison) game.enemy.poison = (game.enemy.poison || 0) + card.poison;
+        if (card.burn) game.enemy.burn = (game.enemy.burn || 0) + card.burn;
     } else if (card.type === 'skill') {
         game.block += card.block;
         addLog(`${card.icon} ${card.name}: +${card.block} защиты`);
     }
-
     updateDisplay();
 }
 
@@ -633,53 +637,57 @@ function endTurn() {
     game.turn++;
     addLog(`--- Ход ${game.turn} врага ---`);
 
-    const action = game.currentEnemy.actions[game.currentEnemy.actionIndex % game.currentEnemy.actions.length];
-    game.currentEnemy.actionIndex++;
+    // Apply effects
+    if (game.poison > 0) {
+        game.enemy.hp -= game.poison;
+        addLog(`☠ Яд: ${game.poison} урона`);
+        game.poison = Math.max(0, game.poison - 1);
+    }
+    if (game.burn > 0) {
+        game.enemy.hp -= game.burn;
+        addLog(`🔥 Огонь: ${game.burn} урона`);
+        game.burn = Math.max(0, game.burn - 1);
+    }
+
+    const action = game.enemy.actions[game.enemy.idx % game.enemy.actions.length];
+    game.enemy.idx++;
 
     if (action === 'attack') {
-        const dmg = Math.max(1, game.currentEnemy.dmg - Math.floor(game.block / 2));
+        const dmg = Math.max(1, game.enemy.dmg - Math.floor(game.block / 2));
         game.hp -= dmg;
-        addLog(`${game.currentEnemy.emoji} атакует: ${dmg} урона (защита: ${game.block})`, true);
+        addLog(`${game.enemy.emoji} атакует: ${dmg} урона`, true);
         game.block = 0;
-    } else if (action === 'heavy_attack') {
-        const dmg = Math.max(1, Math.floor(game.currentEnemy.dmg * 2) - Math.floor(game.block / 2));
+    } else if (action === 'heavy') {
+        const dmg = Math.max(1, game.enemy.dmg * 2 - Math.floor(game.block / 2));
         game.hp -= dmg;
-        addLog(`${game.currentEnemy.emoji} МОЩНАЯ АТАКА: ${dmg} урона!`, true);
+        addLog(`${game.enemy.emoji} МОЩНАЯ АТАКА: ${dmg} урона!`, true);
         game.block = 0;
     } else if (action === 'defend') {
-        game.currentEnemy.block += 8;
-        addLog(`${game.currentEnemy.emoji} готовится к защите: +8 защиты`);
+        game.enemy.block += 8;
+        addLog(`${game.enemy.emoji} готовится к защите`);
     }
 
-    if (game.currentEnemy.hp <= 0) {
-        win();
-        return;
-    }
-
-    if (game.hp <= 0) {
-        lose();
-        return;
-    }
+    if (game.enemy.hp <= 0) { win(); return; }
+    if (game.hp <= 0) { lose(); return; }
 
     game.energy = game.maxEnergy;
-    drawCards(5);
+    drawCards(game.draw_per_turn);
     addLog('Новая рука');
     updateDisplay();
 }
 
 function win() {
-    game.killCount++;
-    game.cardsCollected++;
-    addLog(`${game.currentEnemy.emoji} ${game.currentEnemy.name} побежден!`, true);
+    game.kills++;
+    const goldEarned = 15 + Math.floor(game.floor * 5) + Math.random() * 10;
+    game.gold += Math.floor(goldEarned * game.gold_mult);
+    addLog(`${game.enemy.emoji} ${game.enemy.name} побежден! +${Math.floor(goldEarned * game.gold_mult)}💰`, true);
 
     document.getElementById('reward-modal').classList.add('on');
-    const rewards = document.getElementById('reward-cards');
-    rewards.innerHTML = '';
+    const choices = document.getElementById('reward-choices');
+    choices.innerHTML = '';
 
-    // Гарантировать хороший выбор карт
     const cardKeys = Object.keys(CARD_DEFS);
     const selected = [];
-
     for (let i = 0; i < 3; i++) {
         let key;
         do {
@@ -690,30 +698,100 @@ function win() {
 
     selected.forEach(key => {
         const card = CARD_DEFS[key];
-        rewards.innerHTML += `
-            <div class="reward-card" onclick="addCardToDeck('${key}')">
-                <div class="reward-icon">${card.icon}</div>
-                <div class="reward-name">${card.name}</div>
-                <div class="reward-desc">Стоимость: ${card.cost}</div>
+        choices.innerHTML += `
+            <div class="choice-btn" onclick="addCardAndContinue('${key}')">
+                <div class="choice-icon">${card.icon}</div>
+                <div class="choice-name">${card.name}</div>
+                <div class="choice-desc">${card.rarity}</div>
             </div>
         `;
     });
 }
 
-function addCardToDeck(cardKey) {
-    game.deck.push({ ...CARD_DEFS[cardKey] });
+function addCardAndContinue(key) {
+    game.deck.push({ ...CARD_DEFS[key] });
     document.getElementById('reward-modal').classList.remove('on');
-    nextBattle();
+    proceedAfterReward();
 }
 
-function nextBattle() {
-    game.floor = Math.floor((game.battleNum / 3) + 1);
-
-    if (game.battleNum >= 9) {
+function proceedAfterReward() {
+    if (game.battle >= 9) {
         endGame(true);
     } else {
-        startNewBattle();
+        showPathChoice();
     }
+}
+
+function showPathChoice() {
+    document.getElementById('path-modal').classList.add('on');
+    const choices = document.getElementById('path-choices');
+    choices.innerHTML = `
+        <div class="choice-btn" onclick="nextEvent('battle')">
+            <div class="choice-icon">⚔</div>
+            <div class="choice-name">Бой</div>
+            <div class="choice-desc">Найди врага</div>
+        </div>
+        <div class="choice-btn" onclick="nextEvent('rest')">
+            <div class="choice-icon">🏥</div>
+            <div class="choice-name">Отдых</div>
+            <div class="choice-desc">+15 HP</div>
+        </div>
+        <div class="choice-btn" onclick="nextEvent('treasure')">
+            <div class="choice-icon">💎</div>
+            <div class="choice-name">Сокровище</div>
+            <div class="choice-desc">Реликвия или золото</div>
+        </div>
+        <div class="choice-btn" onclick="nextEvent('shop')">
+            <div class="choice-icon">🏪</div>
+            <div class="choice-name">Магазин</div>
+            <div class="choice-desc">Купи карты</div>
+        </div>
+    `;
+}
+
+function nextEvent(type) {
+    document.getElementById('path-modal').classList.remove('on');
+    if (type === 'battle') {
+        startBattle();
+    } else if (type === 'rest') {
+        game.hp = Math.min(game.hp + 15, game.maxHp);
+        addLog('Ты отдохнул и восстановил 15 HP');
+        game.battle++;
+        if (game.battle >= 9) endGame(true);
+        else showPathChoice();
+    } else if (type === 'treasure') {
+        if (Math.random() < 0.6) {
+            const relicKeys = Object.keys(RELICS);
+            const relic = relicKeys[Math.floor(Math.random() * relicKeys.length)];
+            if (!game.relics.includes(relic)) {
+                game.relics.push(relic);
+                RELICS[relic].effect(game);
+                addLog(`✨ Нашел реликвию: ${RELICS[relic].icon} ${RELICS[relic].name}`);
+            } else {
+                game.gold += 50;
+                addLog('Нашел 50 золота');
+            }
+        } else {
+            game.gold += 50;
+            addLog('Нашел 50 золота');
+        }
+        game.battle++;
+        if (game.battle >= 9) endGame(true);
+        else showPathChoice();
+    } else if (type === 'shop') {
+        // Shop logic here (simplified)
+        addLog('Магазин: куплено 1 карту за 50 золота');
+        if (game.gold >= 50) {
+            game.gold -= 50;
+            const cardKeys = Object.keys(CARD_DEFS).filter(k => CARD_DEFS[k].rarity !== 'common');
+            const card = CARD_DEFS[cardKeys[Math.floor(Math.random() * cardKeys.length)]];
+            game.deck.push({ ...card });
+        }
+        game.battle++;
+        if (game.battle >= 9) endGame(true);
+        else showPathChoice();
+    }
+    updateDisplay();
 }
 
 function lose() {
@@ -730,18 +808,18 @@ function endGame(won) {
     title.textContent = won ? '🎉 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
     title.style.color = won ? '#4ade80' : '#ff6b6b';
 
-    document.getElementById('stat-kills').textContent = game.killCount;
-    document.getElementById('stat-cards').textContent = game.cardsCollected;
-    document.getElementById('stat-decksize').textContent = game.deck.length + game.discardPile.length;
-    document.getElementById('stat-floor').textContent = game.floor;
+    document.getElementById('stat-kills').textContent = game.kills;
+    document.getElementById('stat-floors').textContent = game.floor;
+    document.getElementById('stat-relics').textContent = game.relics.length;
+    document.getElementById('stat-total-gold').textContent = game.gold;
 
     modal.classList.add('on');
 }
 
-function addLog(msg, important = false) {
+function addLog(msg, imp = false) {
     const log = document.getElementById('log');
     const div = document.createElement('div');
-    div.className = 'log-msg' + (important ? ' important' : '');
+    div.className = 'log-msg' + (imp ? ' important' : '');
     div.textContent = msg;
     log.insertBefore(div, log.firstChild);
     if (log.children.length > 20) log.removeChild(log.lastChild);
@@ -752,60 +830,87 @@ function addLog(msg, important = false) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function updateDisplay() {
-    document.getElementById('floor-display').textContent = game.floor;
+    document.getElementById('floor').textContent = game.floor;
+    document.getElementById('battles').textContent = game.battle;
+    document.getElementById('gold').textContent = game.gold;
+    document.getElementById('decksize').textContent = game.deck.length + game.discard.length;
 
-    // Враг
-    const enemy = game.currentEnemy;
-    const enemyMaxHp = Object.values(ENEMIES).find(e => e.emoji === enemy.emoji)?.hp || 50;
-    const enemyHpPct = Math.max(0, enemy.hp / enemyMaxHp);
+    const enemy = game.enemy;
+    const enemyDef = Object.values(ENEMIES).find(e => e.name === enemy.name);
+    const enemyHpPct = Math.max(0, enemy.hp / enemyDef.hp);
+
     document.getElementById('enemy-emoji').textContent = enemy.emoji;
-    document.getElementById('enemy-name').textContent = enemy.name + (enemy.isBoss ? ' 👑 БОСС' : '');
+    document.getElementById('enemy-name').textContent = enemy.name + (enemy.boss ? ' 👑' : '');
     document.getElementById('enemy-hp').textContent = Math.max(0, enemy.hp);
-    document.getElementById('enemy-maxhp').textContent = enemyMaxHp;
-    const enemyBar = document.getElementById('enemy-health-bar');
-    enemyBar.style.width = (enemyHpPct * 100) + '%';
-    enemyBar.className = 'bar-fill ' + (enemyHpPct > 0.5 ? '' : enemyHpPct > 0.25 ? 'low' : 'critical');
-    enemyBar.textContent = Math.max(0, Math.ceil(enemy.hp));
+    document.getElementById('enemy-maxhp').textContent = enemyDef.hp;
 
-    const actionName = { attack: '⚔ Атака', heavy_attack: '💥 МОЩНАЯ АТАКА', defend: '🛡 Защита' };
-    const nextAction = enemy.actions[enemy.actionIndex % enemy.actions.length];
-    document.getElementById('enemy-intent').textContent = actionName[nextAction] || nextAction;
+    const eBar = document.getElementById('enemy-health-bar');
+    eBar.style.width = (enemyHpPct * 100) + '%';
+    eBar.className = 'bar-fill ' + (enemyHpPct > 0.5 ? '' : enemyHpPct > 0.25 ? 'low' : 'critical');
 
-    // Игрок
-    const playerHpPct = game.hp / game.maxHp;
+    const actionName = { attack: '⚔ Атака', heavy: '💥 МОЩНАЯ АТАКА', defend: '🛡 Защита' };
+    document.getElementById('enemy-intent').textContent = actionName[enemy.actions[enemy.idx % enemy.actions.length]];
+
+    // Effects
+    let eEffects = '';
+    if (enemy.poison > 0) eEffects += `☠(${enemy.poison})`;
+    if (enemy.burn > 0) eEffects += ` 🔥(${enemy.burn})`;
+    document.getElementById('enemy-effects').textContent = eEffects;
+
+    // Player
+    const pHpPct = game.hp / game.maxHp;
     document.getElementById('player-hp').textContent = Math.max(0, game.hp);
     document.getElementById('player-maxhp').textContent = game.maxHp;
     document.getElementById('player-block').textContent = game.block;
-    const playerBar = document.getElementById('player-health-bar');
-    playerBar.style.width = (playerHpPct * 100) + '%';
-    playerBar.className = 'bar-fill ' + (playerHpPct > 0.5 ? '' : playerHpPct > 0.25 ? 'low' : 'critical');
-    playerBar.textContent = Math.max(0, Math.ceil(game.hp));
 
-    // Энергия
+    const pBar = document.getElementById('player-health-bar');
+    pBar.style.width = (pHpPct * 100) + '%';
+    pBar.className = 'bar-fill ' + (pHpPct > 0.5 ? '' : pHpPct > 0.25 ? 'low' : 'critical');
+
+    let pEffects = '';
+    if (game.poison > 0) pEffects += `☠(${game.poison})`;
+    if (game.burn > 0) pEffects += ` 🔥(${game.burn})`;
+    document.getElementById('player-effects').textContent = pEffects;
+
+    // Energy
     document.getElementById('energy').textContent = game.energy;
-    const energyBar = document.getElementById('energy-bar');
-    energyBar.innerHTML = '';
+    const eBar = document.getElementById('energy-bar');
+    eBar.innerHTML = '';
     for (let i = 0; i < game.maxEnergy; i++) {
         const orb = document.createElement('div');
         orb.className = 'energy-orb' + (i >= game.energy ? ' empty' : '');
-        energyBar.appendChild(orb);
+        eBar.appendChild(orb);
     }
 
-    // Карты в руке
+    // Hand
     const hand = document.getElementById('hand');
     hand.innerHTML = '';
     game.hand.forEach((card, i) => {
-        const cardEl = document.createElement('div');
-        cardEl.className = 'card' + (game.energy < card.cost ? ' disabled' : '');
-        cardEl.onclick = () => playCard(i);
-        cardEl.innerHTML = `
+        const el = document.createElement('div');
+        el.className = 'card' + (game.energy < card.cost ? ' disabled' : '');
+        el.onclick = () => playCard(i);
+        const rarityClass = card.rarity === 'rare' ? 'rare' : card.rarity === 'epic' ? 'epic' : card.rarity === 'legend' ? 'legend' : '';
+        el.innerHTML = `
+            <div class="card-rarity ${rarityClass}">${card.rarity}</div>
             <div class="card-cost">${card.cost}</div>
             <div class="card-icon">${card.icon}</div>
             <div class="card-name">${card.name}</div>
             <div class="card-desc">${card.desc}</div>
         `;
-        hand.appendChild(cardEl);
+        hand.appendChild(el);
     });
+
+    // Relics
+    const relics = document.getElementById('relics');
+    if (game.relics.length === 0) {
+        relics.textContent = 'Нет';
+    } else {
+        relics.innerHTML = game.relics.map(r => `<div class="relic-icon" title="${RELICS[r].name}">${RELICS[r].icon}</div>`).join('');
+    }
+
+    // Stats
+    document.getElementById('stat-dmg').textContent = 6 + game.dmg_bonus;
+    document.getElementById('stat-def').textContent = 5;
 }
 
 init();
