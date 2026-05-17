@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Колода Силы v4 — Полный рогалик</title>
+    <title>Колода Силы - Карточный рогалик</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -24,22 +24,14 @@
             margin-bottom: 12px;
             text-shadow: 0 0 20px #ff6b6b88;
         }
-        .header-info {
-            display: flex;
-            justify-content: space-around;
-            margin-bottom: 16px;
-            font-size: 12px;
-            color: #888;
-        }
-        .info-box { background: #111; padding: 8px 16px; border-radius: 4px; }
-        .info-box span { color: #4ade80; font-weight: bold; }
+        .header { display: flex; gap: 40px; justify-content: center; margin-bottom: 16px; font-size: 12px; }
+        .main { display: flex; gap: 20px; }
+        .battle { flex: 2; }
+        .sidebar { flex: 1; }
 
-        .main-layout { display: flex; gap: 20px; margin-bottom: 20px; }
-        .battle-area { flex: 2; }
-        .sidebar { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-
-        .battle-screen { display: flex; gap: 20px; }
-        .enemy-side, .player-side { flex: 1; }
+        .battle-layout { display: flex; gap: 20px; }
+        .left { flex: 1; }
+        .right { flex: 1; }
 
         .panel {
             background: linear-gradient(135deg, #111 0%, #1a1a2e 100%);
@@ -50,7 +42,7 @@
         }
         .panel h3 {
             color: #ff6b6b;
-            font-size: 13px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 2px;
             border-bottom: 1px solid #333;
@@ -58,200 +50,106 @@
             margin-bottom: 12px;
         }
 
-        .enemy-display {
-            text-align: center;
-            padding: 20px;
-            background: #0a0a0a;
-            border-radius: 6px;
-            margin-bottom: 12px;
-        }
-        .enemy-emoji { font-size: 70px; margin: 10px 0; }
-        .enemy-name { font-size: 16px; color: #ff6b6b; margin-bottom: 8px; }
+        .display { text-align: center; padding: 20px; background: #0a0a0a; border-radius: 6px; }
+        .emoji { font-size: 60px; margin: 10px 0; }
+        .name { font-size: 16px; color: #ff6b6b; margin-bottom: 10px; font-weight: bold; }
 
-        .health-bar {
-            display: flex;
-            gap: 8px;
-            margin: 10px 0;
-            align-items: center;
-        }
         .bar {
-            flex: 1;
             height: 20px;
             background: #222;
             border: 1px solid #444;
             border-radius: 3px;
             overflow: hidden;
+            margin: 8px 0;
         }
-        .bar-fill {
+        .fill {
             height: 100%;
             background: linear-gradient(90deg, #4ade80, #2ecc71);
             transition: width 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
             color: #000;
         }
-        .bar-fill.low { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
-        .bar-fill.critical { background: linear-gradient(90deg, #ff6b6b, #ef4444); }
+        .fill.yellow { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+        .fill.red { background: linear-gradient(90deg, #ff6b6b, #ef4444); }
 
-        .intent {
-            background: #1a1a2e;
-            border: 1px solid #333;
-            border-radius: 4px;
-            padding: 8px;
-            text-align: center;
-            font-size: 12px;
-            color: #fbbf24;
-            font-weight: bold;
-        }
+        .intent { background: #1a1a2e; border: 1px solid #333; padding: 8px; text-align: center; margin-top: 10px; font-weight: bold; color: #fbbf24; }
+        .effects { display: flex; gap: 4px; margin-top: 8px; font-size: 20px; }
 
-        .effects {
-            display: flex;
-            gap: 4px;
-            margin-top: 8px;
-            flex-wrap: wrap;
-            font-size: 20px;
-        }
-
-        .stats-grid {
+        .grid2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin-bottom: 10px;
         }
         .stat-box {
             background: #0a0a0a;
             border: 1px solid #333;
-            padding: 10px;
+            padding: 8px;
             border-radius: 4px;
             text-align: center;
-            font-size: 13px;
+            font-size: 12px;
         }
-        .stat-label { color: #888; font-size: 10px; text-transform: uppercase; }
-        .stat-value { color: #4ade80; font-size: 18px; font-weight: bold; }
+        .stat-label { color: #888; font-size: 10px; }
+        .stat-val { color: #4ade80; font-size: 16px; font-weight: bold; }
 
         .hand {
             display: flex;
-            gap: 10px;
-            margin-top: 12px;
+            gap: 8px;
             flex-wrap: wrap;
             justify-content: center;
             min-height: 140px;
+            margin-top: 10px;
         }
         .card {
             width: 100px;
             background: linear-gradient(135deg, #1a1a2e, #0f0f1e);
             border: 2px solid #4ade80;
             border-radius: 5px;
-            padding: 10px;
+            padding: 8px;
             cursor: pointer;
             text-align: center;
             transition: all 0.2s;
             position: relative;
+            font-size: 10px;
         }
-        .card:hover {
-            transform: translateY(-6px);
-            border-color: #22c55e;
-            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
-        }
+        .card:hover { transform: translateY(-6px); border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.3); }
         .card.disabled { opacity: 0.4; cursor: not-allowed; }
         .card.disabled:hover { transform: none; box-shadow: none; }
-        .card-cost {
-            background: #ff6b6b;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            font-size: 11px;
-        }
-        .card-rarity {
-            font-size: 8px;
-            position: absolute;
-            top: 6px;
-            left: 6px;
-            padding: 2px 4px;
-            border-radius: 2px;
-        }
-        .rare { color: #4fc3f7; background: rgba(79, 195, 247, 0.2); }
-        .epic { color: #9b59b6; background: rgba(155, 89, 182, 0.2); }
-        .legend { color: #ffd700; background: rgba(255, 215, 0, 0.2); }
+        .card-rarity { font-size: 8px; position: absolute; top: 4px; left: 4px; }
+        .card-cost { position: absolute; top: 4px; right: 4px; background: #ff6b6b; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
+        .card-icon { font-size: 24px; margin: 4px 0; }
+        .card-name { font-weight: bold; margin: 4px 0; }
+        .card-desc { font-size: 9px; color: #888; }
 
-        .card-icon { font-size: 28px; margin: 6px 0; }
-        .card-name { font-size: 10px; color: #e0e0e0; font-weight: bold; }
-        .card-desc { font-size: 9px; color: #888; margin-top: 4px; }
+        .energy { text-align: center; font-size: 14px; padding: 8px; background: #0a0a0a; border-radius: 4px; margin-bottom: 10px; }
+        .energy-dots { display: flex; gap: 3px; justify-content: center; margin-top: 4px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; background: #4ade80; border: 1px solid #22c55e; }
+        .dot.empty { background: #222; border-color: #333; }
 
-        .energy-display {
-            text-align: center;
-            font-size: 16px;
-            padding: 10px;
-            background: #0a0a0a;
-            border-radius: 4px;
-            margin-bottom: 12px;
-        }
-        .energy-bar { display: flex; gap: 3px; justify-content: center; margin-top: 6px; }
-        .energy-orb {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #4ade80;
-            border: 1px solid #22c55e;
-        }
-        .energy-orb.empty { background: #222; border-color: #333; }
-
-        .action-button {
+        .btn {
             width: 100%;
             padding: 10px;
             background: linear-gradient(135deg, #ff6b6b, #ff8c42);
             color: #fff;
             border: none;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 1px;
             margin-top: 10px;
             transition: all 0.2s;
         }
-        .action-button:hover { transform: scale(1.03); box-shadow: 0 0 15px rgba(255,107,107,0.4); }
-        .action-button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn:hover { transform: scale(1.02); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .relics {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-top: 8px;
-        }
-        .relic-icon {
-            width: 32px;
-            height: 32px;
-            background: #0a0a0a;
-            border: 1px solid #4ade80;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: help;
-            title: "Relic";
-        }
-
-        .log {
-            height: 120px;
-            overflow-y: auto;
-            font-size: 11px;
-            line-height: 1.4;
-        }
-        .log-msg { padding: 2px 0; color: #888; }
-        .log-msg.important { color: #ff6b6b; font-weight: bold; }
+        .log { height: 110px; overflow-y: auto; font-size: 11px; line-height: 1.4; }
+        .msg { padding: 2px 0; color: #888; }
+        .msg.imp { color: #ff6b6b; font-weight: bold; }
 
         .modal {
             display: none;
@@ -263,134 +161,108 @@
             z-index: 99;
         }
         .modal.on { display: flex; }
-
-        .modal-content {
+        .modal-box {
             background: linear-gradient(135deg, #111 0%, #1a1a2e 100%);
             border: 2px solid #ff6b6b;
             padding: 40px;
-            text-align: center;
             border-radius: 6px;
-            max-width: 700px;
+            text-align: center;
+            max-width: 600px;
             max-height: 90vh;
             overflow-y: auto;
         }
-        .modal-content h2 {
-            font-size: 32px;
-            color: #4ade80;
-            margin-bottom: 20px;
-        }
-
+        .modal-box h2 { font-size: 28px; color: #4ade80; margin-bottom: 20px; }
         .choices {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 12px;
             margin: 20px 0;
         }
-        .choice-btn {
+        .choice {
             background: #0a0a0a;
             border: 2px solid #4ade80;
             border-radius: 6px;
-            padding: 16px;
+            padding: 12px;
             cursor: pointer;
-            text-align: center;
             transition: all 0.2s;
         }
-        .choice-btn:hover {
-            border-color: #22c55e;
-            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
-        }
-        .choice-icon { font-size: 40px; margin-bottom: 8px; }
-        .choice-name { font-size: 12px; color: #e0e0e0; font-weight: bold; }
-        .choice-desc { font-size: 10px; color: #888; margin-top: 4px; }
+        .choice:hover { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.3); }
+        .choice-icon { font-size: 36px; margin-bottom: 6px; }
+        .choice-name { font-size: 11px; color: #e0e0e0; font-weight: bold; }
+        .choice-desc { font-size: 9px; color: #888; margin-top: 4px; }
 
-        .stat-summary {
+        .stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin: 20px 0;
         }
-        .stat-summary-box {
-            background: #0a0a0a;
-            padding: 12px;
-            border-radius: 4px;
-        }
-        .stat-summary-label { color: #888; font-size: 11px; text-transform: uppercase; }
-        .stat-summary-value { color: #4ade80; font-size: 20px; font-weight: bold; }
-
-        button.btn { padding: 10px 24px; background: linear-gradient(135deg, #ff6b6b, #ff8c42); color: #fff; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 16px; }
-        button.btn:hover { transform: scale(1.05); }
+        .stat { background: #0a0a0a; padding: 12px; border-radius: 4px; }
+        .stat-label { color: #888; font-size: 10px; }
+        .stat-value { color: #4ade80; font-size: 18px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🃏 КОЛОДА СИЛЫ v4 🃏</h1>
-    <div class="header-info">
-        <div class="info-box">Этаж <span id="floor">1</span>/3</div>
-        <div class="info-box">Боёв <span id="battles">0</span>/9</div>
-        <div class="info-box">Золото <span id="gold">0</span>💰</div>
-        <div class="info-box">Колода <span id="decksize">5</span> карт</div>
+    <h1>🃏 КОЛОДА СИЛЫ 🃏</h1>
+    <div class="header">
+        <div>Этаж <span id="floor">1</span>/3</div>
+        <div>Боёв <span id="battle">0</span>/9</div>
+        <div>Золото <span id="gold">0</span>💰</div>
+        <div>Колода <span id="decksize">5</span></div>
     </div>
 
-    <div class="main-layout">
-        <!-- BATTLE -->
-        <div class="battle-area">
+    <div class="main">
+        <div class="battle">
             <div id="battle-screen">
-                <div class="battle-screen">
-                    <!-- Enemy -->
-                    <div class="enemy-side">
-                        <div class="enemy-display">
-                            <div class="enemy-emoji" id="enemy-emoji"></div>
-                            <div class="enemy-name" id="enemy-name"></div>
-                            <div class="health-bar">
-                                <div class="bar">
-                                    <div class="bar-fill" id="enemy-health-bar"></div>
-                                </div>
-                                <div style="min-width: 45px; text-align: center; font-size: 12px;">
-                                    <span id="enemy-hp">0</span> / <span id="enemy-maxhp">0</span>
-                                </div>
+                <div class="battle-layout">
+                    <!-- ВРАГ -->
+                    <div class="left">
+                        <div class="display">
+                            <div class="emoji" id="emoji">👹</div>
+                            <div class="name" id="ename">враг</div>
+                            <div class="bar">
+                                <div class="fill" id="ebar" style="width: 100%;">50/50</div>
                             </div>
-                            <div class="effects" id="enemy-effects"></div>
-                            <div class="intent" id="enemy-intent"></div>
+                            <div class="effects" id="eeffects"></div>
+                            <div class="intent" id="intent">⚔ Атака</div>
                         </div>
+
                         <div class="panel">
-                            <h3>📜 Журнал боя</h3>
+                            <h3>📜 Журнал</h3>
                             <div class="log" id="log"></div>
                         </div>
                     </div>
 
-                    <!-- Player -->
-                    <div class="player-side">
+                    <!-- ИГРОК -->
+                    <div class="right">
                         <div class="panel">
                             <h3>⚔ Твоя статистика</h3>
-                            <div class="stats-grid">
+                            <div class="grid2">
                                 <div class="stat-box">
                                     <div class="stat-label">HP</div>
-                                    <div style="color: #4ade80; font-size: 16px; font-weight: bold;">
-                                        <span id="player-hp">0</span>/<span id="player-maxhp">0</span>
-                                    </div>
+                                    <div class="stat-val"><span id="hp">50</span>/<span id="mhp">50</span></div>
                                 </div>
                                 <div class="stat-box">
                                     <div class="stat-label">Защита</div>
-                                    <div style="color: #4fc3f7; font-size: 16px; font-weight: bold;">
-                                        <span id="player-block">0</span>
-                                    </div>
+                                    <div class="stat-val" id="block">0</div>
                                 </div>
                             </div>
-                            <div class="health-bar">
-                                <div class="bar">
-                                    <div class="bar-fill" id="player-health-bar"></div>
-                                </div>
+                            <div class="bar">
+                                <div class="fill" id="pbar" style="width: 100%;">50</div>
                             </div>
-                            <div class="effects" id="player-effects"></div>
+                            <div class="effects" id="peffects"></div>
                         </div>
 
                         <div class="panel">
-                            <div class="energy-display">
+                            <div class="energy">
                                 ⚡ Энергия: <span id="energy">3</span>/3
-                                <div class="energy-bar" id="energy-bar"></div>
+                                <div class="energy-dots" id="energy-dots">
+                                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                                </div>
                             </div>
-                            <button class="action-button" onclick="endTurn()">Закончить ход</button>
+                            <button class="btn" onclick="endTurn()">Закончить ход</button>
                         </div>
 
                         <div class="panel">
@@ -402,103 +274,59 @@
             </div>
         </div>
 
-        <!-- SIDEBAR -->
+        <!-- САЙДБАР -->
         <div class="sidebar">
             <div class="panel">
                 <h3>✨ Реликвии</h3>
-                <div class="relics" id="relics">Нет</div>
-            </div>
-
-            <div class="panel">
-                <h3>📊 Статы</h3>
-                <div class="stats-grid" style="margin-bottom: 0;">
-                    <div class="stat-box">
-                        <div class="stat-label">Урон</div>
-                        <div class="stat-value" id="stat-dmg">0</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Защита</div>
-                        <div class="stat-value" id="stat-def">0</div>
-                    </div>
-                </div>
+                <div id="relics" style="min-height: 40px;">Нет</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- REWARD MODAL -->
+<!-- МОДАЛИ -->
 <div class="modal" id="reward-modal">
-    <div class="modal-content">
+    <div class="modal-box">
         <h2>🎉 Победа!</h2>
-        <p id="reward-msg">Выбери карту для добавления в колоду</p>
+        <p>Выбери карту</p>
         <div class="choices" id="reward-choices"></div>
-        <button class="btn" onclick="proceedAfterReward()">Далее</button>
+        <button class="btn" onclick="closReward()">Далее</button>
     </div>
 </div>
 
-<!-- PATH CHOICE MODAL -->
 <div class="modal" id="path-modal">
-    <div class="modal-content">
+    <div class="modal-box">
         <h2>🛤️ Выбери путь</h2>
-        <p>Куда ты хочешь пойти дальше?</p>
         <div class="choices" id="path-choices"></div>
     </div>
 </div>
 
-<!-- GAME OVER MODAL -->
 <div class="modal" id="gameover-modal">
-    <div class="modal-content">
-        <h2 id="gameover-title"></h2>
-        <div class="stat-summary">
-            <div class="stat-summary-box">
-                <div class="stat-summary-label">Врагов побеждено</div>
-                <div class="stat-summary-value" id="stat-kills">0</div>
-            </div>
-            <div class="stat-summary-box">
-                <div class="stat-summary-label">Этажей преодолено</div>
-                <div class="stat-summary-value" id="stat-floors">0</div>
-            </div>
-            <div class="stat-summary-box">
-                <div class="stat-summary-label">Реликвий собрано</div>
-                <div class="stat-summary-value" id="stat-relics">0</div>
-            </div>
-            <div class="stat-summary-box">
-                <div class="stat-summary-label">Итого золота</div>
-                <div class="stat-summary-value" id="stat-total-gold">0</div>
-            </div>
+    <div class="modal-box">
+        <h2 id="go-title">Победа!</h2>
+        <div class="stats">
+            <div class="stat"><div class="stat-label">Врагов</div><div class="stat-value" id="stat-kills">0</div></div>
+            <div class="stat"><div class="stat-label">Этажей</div><div class="stat-value" id="stat-floors">0</div></div>
+            <div class="stat"><div class="stat-label">Реликвий</div><div class="stat-value" id="stat-relics">0</div></div>
+            <div class="stat"><div class="stat-label">Золото</div><div class="stat-value" id="stat-gold">0</div></div>
         </div>
         <button class="btn" onclick="location.reload()">Играть снова</button>
     </div>
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════════════════════════
-// КАРТЫ С РЕДКОСТЬЮ И ЭФФЕКТАМИ
-// ════════════════════════════════════════════════════════════════════════════
-
-const CARD_DEFS = {
-    // Common атаки
+// КАРТЫ
+const CARDS = {
     strike: { name: 'Удар', icon: '⚔', cost: 1, type: 'attack', dmg: 6, rarity: 'common', desc: '6 урона' },
-    pummel: { name: 'Комбо', icon: '👊', cost: 1, type: 'attack', dmg: 3, hits: 2, rarity: 'common', desc: '3x2 урона' },
-
-    // Common защита
-    defend: { name: 'Защита', icon: '🛡', cost: 1, type: 'skill', block: 5, rarity: 'common', desc: '+5 защиты' },
-    brace: { name: 'Стойка', icon: '🔒', cost: 0, type: 'skill', block: 3, rarity: 'common', desc: '+3 защиты (бесплатно)' },
-
-    // Rare атаки
-    heavy_strike: { name: 'Мощный удар', icon: '💥', cost: 2, type: 'attack', dmg: 13, rarity: 'rare', desc: '13 урона' },
-    poison_strike: { name: 'Ядовитый удар', icon: '☠', cost: 2, type: 'attack', dmg: 8, poison: 2, rarity: 'rare', desc: '8 урона + яд (2)' },
-
-    // Rare защита
-    iron_skin: { name: 'Железная кожа', icon: '🪨', cost: 1, type: 'skill', block: 7, rarity: 'rare', desc: '+7 защиты' },
-    fortify: { name: 'Укрепление', icon: '🏰', cost: 2, type: 'skill', block: 10, rarity: 'rare', desc: '+10 защиты' },
-
-    // Epic
-    fireball: { name: 'Огненный шар', icon: '🔥', cost: 2, type: 'power', dmg: 10, burn: 1, rarity: 'epic', desc: '10 урона + огонь (1)' },
-    shockwave: { name: 'Волна', icon: '〰', cost: 3, type: 'power', dmg: 15, rarity: 'epic', desc: '15 урона' },
-
-    // Legend
-    inferno: { name: 'Инферно', icon: '🌪', cost: 3, type: 'power', dmg: 20, burn: 3, rarity: 'legend', desc: '20 урона + огонь (3)' },
+    pummel: { name: 'Комбо', icon: '👊', cost: 1, type: 'attack', dmg: 3, hits: 2, rarity: 'common', desc: '3x2' },
+    defend: { name: 'Защита', icon: '🛡', cost: 1, type: 'skill', block: 5, rarity: 'common', desc: '+5' },
+    brace: { name: 'Стойка', icon: '🔒', cost: 0, type: 'skill', block: 3, rarity: 'common', desc: '+3' },
+    heavy: { name: 'Мощный удар', icon: '💥', cost: 2, type: 'attack', dmg: 13, rarity: 'rare', desc: '13' },
+    poison: { name: 'Ядовитый', icon: '☠', cost: 2, type: 'attack', dmg: 8, poison: 2, rarity: 'rare', desc: '8+яд' },
+    iron: { name: 'Железная кожа', icon: '🪨', cost: 1, type: 'skill', block: 7, rarity: 'rare', desc: '+7' },
+    fireball: { name: 'Огненный шар', icon: '🔥', cost: 2, type: 'power', dmg: 10, burn: 1, rarity: 'epic', desc: '10+огонь' },
+    wave: { name: 'Волна', icon: '〰', cost: 3, type: 'power', dmg: 15, rarity: 'epic', desc: '15' },
+    inferno: { name: 'Инферно', icon: '🌪', cost: 3, type: 'power', dmg: 20, burn: 3, rarity: 'legend', desc: '20+3огонь' },
 };
 
 const ENEMIES = {
@@ -513,80 +341,53 @@ const ENEMIES = {
     dragon: { name: 'Дракон', emoji: '🐲', hp: 60, dmg: 8, actions: ['heavy','heavy','defend'], floor: 3, boss: 1 },
 };
 
-const RELICS = {
-    hp_boost: { name: 'Амулет жизни', icon: '❤', desc: '+20 HP', effect: (g) => g.maxHp += 20 },
-    damage_boost: { name: 'Перчатки воина', icon: '🥊', desc: '+2 урона', effect: (g) => g.dmg_bonus += 2 },
-    gold_plus: { name: 'Мешочек золота', icon: '💰', desc: '+25% золота', effect: (g) => g.gold_mult = 1.25 },
-    energy_plus: { name: 'Магический камень', icon: '💎', desc: '+1 энергия за ход', effect: (g) => g.maxEnergy += 1 },
-    draw_plus: { name: 'Книга знаний', icon: '📖', desc: '+1 карта в руке', effect: (g) => g.draw_per_turn += 1 },
-};
-
-// ════════════════════════════════════════════════════════════════════════════
-// СОСТОЯНИЕ ИГРЫ
-// ════════════════════════════════════════════════════════════════════════════
-
+// СОСТОЯНИЕ
 let game = {
-    // Player
     hp: 50, maxHp: 50, block: 0,
     deck: [], hand: [], discard: [],
     energy: 3, maxEnergy: 3,
-    gold: 0, gold_mult: 1,
-    dmg_bonus: 0,
-    draw_per_turn: 5,
-    relics: [],
-
-    // Effects
+    gold: 0, relics: [],
+    dmg_bonus: 0, draw_per_turn: 5,
     poison: 0, burn: 0,
-
-    // Battle
     battle: 0, floor: 1,
-    enemy: null,
-    turn: 0,
-    log: [],
-
-    // Stats
-    kills: 0,
+    enemy: null, kills: 0, log: [],
 };
-
-// ════════════════════════════════════════════════════════════════════════════
-// ИНИЦИАЛИЗАЦИЯ
-// ════════════════════════════════════════════════════════════════════════════
 
 function init() {
     game.deck = [
-        { ...CARD_DEFS.strike },
-        { ...CARD_DEFS.strike },
-        { ...CARD_DEFS.defend },
-        { ...CARD_DEFS.defend },
-        { ...CARD_DEFS.brace },
+        { ...CARDS.strike },
+        { ...CARDS.strike },
+        { ...CARDS.defend },
+        { ...CARDS.defend },
+        { ...CARDS.brace },
     ];
-    game.hp = 50;
-    game.maxHp = 50;
+    game.hp = game.maxHp = 50;
+    game.gold = 0;
+    game.battle = 0;
     startBattle();
 }
 
 function startBattle() {
-    game.turn = 0;
-    game.block = 0;
-    game.poison = 0;
-    game.burn = 0;
-    game.log = [];
-    game.hand = [];
     game.battle++;
     game.floor = Math.floor((game.battle - 1) / 3) + 1;
+    game.turn = 0;
+    game.block = 0;
+    game.poison = game.burn = 0;
+    game.log = [];
+    game.hand = [];
 
     const floorEnemies = Object.values(ENEMIES).filter(e => e.floor <= game.floor);
     let enemy;
     if (game.battle % 3 === 0 && game.floor >= 2) {
         const bosses = floorEnemies.filter(e => e.boss);
-        enemy = bosses.length > 0 ? bosses[Math.floor(Math.random() * bosses.length)] : floorEnemies[floorEnemies.length - 1];
+        enemy = bosses.length ? bosses[Math.floor(Math.random() * bosses.length)] : floorEnemies[floorEnemies.length - 1];
     } else {
         enemy = floorEnemies[Math.floor(Math.random() * floorEnemies.length)];
     }
 
     game.enemy = { ...enemy, hp: enemy.hp, block: 0, idx: 0 };
     drawCards(game.draw_per_turn);
-    addLog(`💀 Встреча с ${game.enemy.emoji} ${game.enemy.name}!`);
+    addLog(`💀 ${game.enemy.name}!`);
     updateDisplay();
 }
 
@@ -595,58 +396,47 @@ function drawCards(num) {
         if (game.deck.length === 0) {
             game.deck = [...game.discard];
             game.discard = [];
-            if (game.deck.length === 0) break;
+            if (!game.deck.length) break;
         }
         const idx = Math.floor(Math.random() * game.deck.length);
         game.hand.push(game.deck.splice(idx, 1)[0]);
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// ИГРОВАЯ ЛОГИКА
-// ════════════════════════════════════════════════════════════════════════════
-
 function playCard(i) {
-    if (i >= game.hand.length) return;
+    if (i >= game.hand.length || game.energy < game.hand[i].cost) return;
     const card = game.hand[i];
-    if (game.energy < card.cost) return;
-
     game.energy -= card.cost;
     game.hand.splice(i, 1);
     game.discard.push(card);
 
     if (card.type === 'attack' || card.type === 'power') {
         let dmg = card.dmg + game.dmg_bonus;
-        if (card.hits) {
-            dmg *= card.hits;
-            addLog(`${card.icon} ${card.name}: ${card.dmg}x${card.hits} = ${dmg} урона`);
-        } else {
-            addLog(`${card.icon} ${card.name}: ${dmg} урона`);
-        }
+        if (card.hits) dmg *= card.hits;
         game.enemy.hp -= dmg;
+        addLog(`${card.icon} ${card.name}: ${dmg} урона`);
         if (card.poison) game.enemy.poison = (game.enemy.poison || 0) + card.poison;
         if (card.burn) game.enemy.burn = (game.enemy.burn || 0) + card.burn;
-    } else if (card.type === 'skill') {
+    } else {
         game.block += card.block;
-        addLog(`${card.icon} ${card.name}: +${card.block} защиты`);
+        addLog(`${card.icon} ${card.name}: +${card.block}`);
     }
     updateDisplay();
 }
 
 function endTurn() {
     game.turn++;
-    addLog(`--- Ход ${game.turn} врага ---`);
+    addLog('---Ход врага---');
 
-    // Apply effects
     if (game.poison > 0) {
         game.enemy.hp -= game.poison;
-        addLog(`☠ Яд: ${game.poison} урона`);
-        game.poison = Math.max(0, game.poison - 1);
+        addLog(`☠ Яд: ${game.poison}`);
+        game.poison--;
     }
     if (game.burn > 0) {
         game.enemy.hp -= game.burn;
-        addLog(`🔥 Огонь: ${game.burn} урона`);
-        game.burn = Math.max(0, game.burn - 1);
+        addLog(`🔥 Огонь: ${game.burn}`);
+        game.burn--;
     }
 
     const action = game.enemy.actions[game.enemy.idx % game.enemy.actions.length];
@@ -655,16 +445,16 @@ function endTurn() {
     if (action === 'attack') {
         const dmg = Math.max(1, game.enemy.dmg - Math.floor(game.block / 2));
         game.hp -= dmg;
-        addLog(`${game.enemy.emoji} атакует: ${dmg} урона`, true);
+        addLog(`${game.enemy.emoji} атака: ${dmg} урона`, 1);
         game.block = 0;
     } else if (action === 'heavy') {
         const dmg = Math.max(1, game.enemy.dmg * 2 - Math.floor(game.block / 2));
         game.hp -= dmg;
-        addLog(`${game.enemy.emoji} МОЩНАЯ АТАКА: ${dmg} урона!`, true);
+        addLog(`${game.enemy.emoji} МОЩНАЯ: ${dmg}!`, 1);
         game.block = 0;
     } else if (action === 'defend') {
         game.enemy.block += 8;
-        addLog(`${game.enemy.emoji} готовится к защите`);
+        addLog(`${game.enemy.emoji} защита +8`);
     }
 
     if (game.enemy.hp <= 0) { win(); return; }
@@ -678,124 +468,82 @@ function endTurn() {
 
 function win() {
     game.kills++;
-    const goldEarned = 15 + Math.floor(game.floor * 5) + Math.random() * 10;
-    game.gold += Math.floor(goldEarned * game.gold_mult);
-    addLog(`${game.enemy.emoji} ${game.enemy.name} побежден! +${Math.floor(goldEarned * game.gold_mult)}💰`, true);
+    game.gold += 20 + Math.floor(game.floor * 5);
+    addLog(`${game.enemy.emoji} побежден!`, 1);
 
     document.getElementById('reward-modal').classList.add('on');
-    const choices = document.getElementById('reward-choices');
-    choices.innerHTML = '';
-
-    const cardKeys = Object.keys(CARD_DEFS);
-    const selected = [];
+    const chosen = [];
+    const keys = Object.keys(CARDS);
     for (let i = 0; i < 3; i++) {
         let key;
-        do {
-            key = cardKeys[Math.floor(Math.random() * cardKeys.length)];
-        } while (selected.includes(key));
-        selected.push(key);
+        do key = keys[Math.floor(Math.random() * keys.length)];
+        while (chosen.includes(key));
+        chosen.push(key);
     }
 
-    selected.forEach(key => {
-        const card = CARD_DEFS[key];
-        choices.innerHTML += `
-            <div class="choice-btn" onclick="addCardAndContinue('${key}')">
-                <div class="choice-icon">${card.icon}</div>
-                <div class="choice-name">${card.name}</div>
-                <div class="choice-desc">${card.rarity}</div>
-            </div>
-        `;
-    });
+    document.getElementById('reward-choices').innerHTML = chosen.map(key => {
+        const card = CARDS[key];
+        return `<div class="choice" onclick="addCard('${key}')">
+            <div class="choice-icon">${card.icon}</div>
+            <div class="choice-name">${card.name}</div>
+            <div class="choice-desc">${card.rarity}</div>
+        </div>`;
+    }).join('');
 }
 
-function addCardAndContinue(key) {
-    game.deck.push({ ...CARD_DEFS[key] });
+function addCard(key) {
+    game.deck.push({ ...CARDS[key] });
     document.getElementById('reward-modal').classList.remove('on');
-    proceedAfterReward();
+    closReward();
 }
 
-function proceedAfterReward() {
+function closReward() {
     if (game.battle >= 9) {
         endGame(true);
     } else {
-        showPathChoice();
+        showPath();
     }
 }
 
-function showPathChoice() {
+function showPath() {
     document.getElementById('path-modal').classList.add('on');
-    const choices = document.getElementById('path-choices');
-    choices.innerHTML = `
-        <div class="choice-btn" onclick="nextEvent('battle')">
-            <div class="choice-icon">⚔</div>
-            <div class="choice-name">Бой</div>
-            <div class="choice-desc">Найди врага</div>
-        </div>
-        <div class="choice-btn" onclick="nextEvent('rest')">
-            <div class="choice-icon">🏥</div>
-            <div class="choice-name">Отдых</div>
-            <div class="choice-desc">+15 HP</div>
-        </div>
-        <div class="choice-btn" onclick="nextEvent('treasure')">
-            <div class="choice-icon">💎</div>
-            <div class="choice-name">Сокровище</div>
-            <div class="choice-desc">Реликвия или золото</div>
-        </div>
-        <div class="choice-btn" onclick="nextEvent('shop')">
-            <div class="choice-icon">🏪</div>
-            <div class="choice-name">Магазин</div>
-            <div class="choice-desc">Купи карты</div>
-        </div>
+    document.getElementById('path-choices').innerHTML = `
+        <div class="choice" onclick="nextEvent('battle')"><div class="choice-icon">⚔</div><div class="choice-name">Бой</div></div>
+        <div class="choice" onclick="nextEvent('rest')"><div class="choice-icon">🏥</div><div class="choice-name">Отдых</div></div>
+        <div class="choice" onclick="nextEvent('shop')"><div class="choice-icon">🏪</div><div class="choice-name">Магазин</div></div>
+        <div class="choice" onclick="nextEvent('treasure')"><div class="choice-icon">💎</div><div class="choice-name">Клад</div></div>
     `;
 }
 
 function nextEvent(type) {
     document.getElementById('path-modal').classList.remove('on');
-    if (type === 'battle') {
-        startBattle();
-    } else if (type === 'rest') {
+    if (type === 'battle') startBattle();
+    else if (type === 'rest') {
         game.hp = Math.min(game.hp + 15, game.maxHp);
-        addLog('Ты отдохнул и восстановил 15 HP');
         game.battle++;
         if (game.battle >= 9) endGame(true);
-        else showPathChoice();
-    } else if (type === 'treasure') {
-        if (Math.random() < 0.6) {
-            const relicKeys = Object.keys(RELICS);
-            const relic = relicKeys[Math.floor(Math.random() * relicKeys.length)];
-            if (!game.relics.includes(relic)) {
-                game.relics.push(relic);
-                RELICS[relic].effect(game);
-                addLog(`✨ Нашел реликвию: ${RELICS[relic].icon} ${RELICS[relic].name}`);
-            } else {
-                game.gold += 50;
-                addLog('Нашел 50 золота');
-            }
-        } else {
-            game.gold += 50;
-            addLog('Нашел 50 золота');
-        }
-        game.battle++;
-        if (game.battle >= 9) endGame(true);
-        else showPathChoice();
-    } else if (type === 'shop') {
-        // Shop logic here (simplified)
-        addLog('Магазин: куплено 1 карту за 50 золота');
+        else showPath();
+    }
+    else if (type === 'shop') {
         if (game.gold >= 50) {
             game.gold -= 50;
-            const cardKeys = Object.keys(CARD_DEFS).filter(k => CARD_DEFS[k].rarity !== 'common');
-            const card = CARD_DEFS[cardKeys[Math.floor(Math.random() * cardKeys.length)]];
-            game.deck.push({ ...card });
+            const keys = Object.keys(CARDS).filter(k => CARDS[k].rarity !== 'common');
+            game.deck.push({ ...CARDS[keys[Math.floor(Math.random() * keys.length)]] });
         }
         game.battle++;
         if (game.battle >= 9) endGame(true);
-        else showPathChoice();
+        else showPath();
+    }
+    else if (type === 'treasure') {
+        game.gold += 50;
+        game.battle++;
+        if (game.battle >= 9) endGame(true);
+        else showPath();
     }
     updateDisplay();
 }
 
 function lose() {
-    addLog('Ты был побежден!', true);
     setTimeout(() => {
         document.getElementById('battle-screen').style.display = 'none';
         endGame(false);
@@ -803,83 +551,71 @@ function lose() {
 }
 
 function endGame(won) {
-    const modal = document.getElementById('gameover-modal');
-    const title = document.getElementById('gameover-title');
-    title.textContent = won ? '🎉 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
-    title.style.color = won ? '#4ade80' : '#ff6b6b';
-
+    document.getElementById('go-title').textContent = won ? '🎉 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
+    document.getElementById('go-title').style.color = won ? '#4ade80' : '#ff6b6b';
     document.getElementById('stat-kills').textContent = game.kills;
     document.getElementById('stat-floors').textContent = game.floor;
-    document.getElementById('stat-relics').textContent = game.relics.length;
-    document.getElementById('stat-total-gold').textContent = game.gold;
-
-    modal.classList.add('on');
+    document.getElementById('stat-relics').textContent = 0;
+    document.getElementById('stat-gold').textContent = game.gold;
+    document.getElementById('gameover-modal').classList.add('on');
 }
 
-function addLog(msg, imp = false) {
-    const log = document.getElementById('log');
-    const div = document.createElement('div');
-    div.className = 'log-msg' + (imp ? ' important' : '');
-    div.textContent = msg;
-    log.insertBefore(div, log.firstChild);
-    if (log.children.length > 20) log.removeChild(log.lastChild);
+function addLog(msg, imp = 0) {
+    const el = document.createElement('div');
+    el.className = 'msg' + (imp ? ' imp' : '');
+    el.textContent = msg;
+    document.getElementById('log').insertBefore(el, document.getElementById('log').firstChild);
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// ОТОБРАЖЕНИЕ
-// ════════════════════════════════════════════════════════════════════════════
 
 function updateDisplay() {
+    const e = game.enemy;
+    const eDef = Object.values(ENEMIES).find(x => x.name === e.name);
+
     document.getElementById('floor').textContent = game.floor;
-    document.getElementById('battles').textContent = game.battle;
+    document.getElementById('battle').textContent = game.battle;
     document.getElementById('gold').textContent = game.gold;
     document.getElementById('decksize').textContent = game.deck.length + game.discard.length;
 
-    const enemy = game.enemy;
-    const enemyDef = Object.values(ENEMIES).find(e => e.name === enemy.name);
-    const enemyHpPct = Math.max(0, enemy.hp / enemyDef.hp);
+    // Enemy
+    document.getElementById('emoji').textContent = e.emoji;
+    document.getElementById('ename').textContent = e.name + (e.boss ? ' 👑' : '');
+    const ePct = Math.max(0, e.hp / eDef.hp);
+    const eBar = document.getElementById('ebar');
+    eBar.style.width = (ePct * 100) + '%';
+    eBar.className = 'fill ' + (ePct > 0.5 ? '' : ePct > 0.25 ? 'yellow' : 'red');
+    eBar.textContent = Math.max(0, e.hp) + '/' + eDef.hp;
 
-    document.getElementById('enemy-emoji').textContent = enemy.emoji;
-    document.getElementById('enemy-name').textContent = enemy.name + (enemy.boss ? ' 👑' : '');
-    document.getElementById('enemy-hp').textContent = Math.max(0, enemy.hp);
-    document.getElementById('enemy-maxhp').textContent = enemyDef.hp;
+    const actions = { attack: '⚔', heavy: '💥', defend: '🛡' };
+    document.getElementById('intent').textContent = (actions[e.actions[e.idx % e.actions.length]] || '?') + ' ' + e.actions[e.idx % e.actions.length];
 
-    const eBar = document.getElementById('enemy-health-bar');
-    eBar.style.width = (enemyHpPct * 100) + '%';
-    eBar.className = 'bar-fill ' + (enemyHpPct > 0.5 ? '' : enemyHpPct > 0.25 ? 'low' : 'critical');
-
-    const actionName = { attack: '⚔ Атака', heavy: '💥 МОЩНАЯ АТАКА', defend: '🛡 Защита' };
-    document.getElementById('enemy-intent').textContent = actionName[enemy.actions[enemy.idx % enemy.actions.length]];
-
-    // Effects
-    let eEffects = '';
-    if (enemy.poison > 0) eEffects += `☠(${enemy.poison})`;
-    if (enemy.burn > 0) eEffects += ` 🔥(${enemy.burn})`;
-    document.getElementById('enemy-effects').textContent = eEffects;
+    let eEff = '';
+    if (e.poison) eEff += ` ☠(${e.poison})`;
+    if (e.burn) eEff += ` 🔥(${e.burn})`;
+    document.getElementById('eeffects').textContent = eEff;
 
     // Player
-    const pHpPct = game.hp / game.maxHp;
-    document.getElementById('player-hp').textContent = Math.max(0, game.hp);
-    document.getElementById('player-maxhp').textContent = game.maxHp;
-    document.getElementById('player-block').textContent = game.block;
+    document.getElementById('hp').textContent = Math.max(0, game.hp);
+    document.getElementById('mhp').textContent = game.maxHp;
+    document.getElementById('block').textContent = game.block;
+    const pPct = game.hp / game.maxHp;
+    const pBar = document.getElementById('pbar');
+    pBar.style.width = (pPct * 100) + '%';
+    pBar.className = 'fill ' + (pPct > 0.5 ? '' : pPct > 0.25 ? 'yellow' : 'red');
+    pBar.textContent = Math.max(0, game.hp);
 
-    const pBar = document.getElementById('player-health-bar');
-    pBar.style.width = (pHpPct * 100) + '%';
-    pBar.className = 'bar-fill ' + (pHpPct > 0.5 ? '' : pHpPct > 0.25 ? 'low' : 'critical');
-
-    let pEffects = '';
-    if (game.poison > 0) pEffects += `☠(${game.poison})`;
-    if (game.burn > 0) pEffects += ` 🔥(${game.burn})`;
-    document.getElementById('player-effects').textContent = pEffects;
+    let pEff = '';
+    if (game.poison) pEff += ` ☠(${game.poison})`;
+    if (game.burn) pEff += ` 🔥(${game.burn})`;
+    document.getElementById('peffects').textContent = pEff;
 
     // Energy
     document.getElementById('energy').textContent = game.energy;
-    const eBar = document.getElementById('energy-bar');
-    eBar.innerHTML = '';
+    const eDots = document.getElementById('energy-dots');
+    eDots.innerHTML = '';
     for (let i = 0; i < game.maxEnergy; i++) {
-        const orb = document.createElement('div');
-        orb.className = 'energy-orb' + (i >= game.energy ? ' empty' : '');
-        eBar.appendChild(orb);
+        const dot = document.createElement('div');
+        dot.className = 'dot' + (i >= game.energy ? ' empty' : '');
+        eDots.appendChild(dot);
     }
 
     // Hand
@@ -889,9 +625,8 @@ function updateDisplay() {
         const el = document.createElement('div');
         el.className = 'card' + (game.energy < card.cost ? ' disabled' : '');
         el.onclick = () => playCard(i);
-        const rarityClass = card.rarity === 'rare' ? 'rare' : card.rarity === 'epic' ? 'epic' : card.rarity === 'legend' ? 'legend' : '';
         el.innerHTML = `
-            <div class="card-rarity ${rarityClass}">${card.rarity}</div>
+            <div class="card-rarity">${card.rarity}</div>
             <div class="card-cost">${card.cost}</div>
             <div class="card-icon">${card.icon}</div>
             <div class="card-name">${card.name}</div>
@@ -899,18 +634,6 @@ function updateDisplay() {
         `;
         hand.appendChild(el);
     });
-
-    // Relics
-    const relics = document.getElementById('relics');
-    if (game.relics.length === 0) {
-        relics.textContent = 'Нет';
-    } else {
-        relics.innerHTML = game.relics.map(r => `<div class="relic-icon" title="${RELICS[r].name}">${RELICS[r].icon}</div>`).join('');
-    }
-
-    // Stats
-    document.getElementById('stat-dmg').textContent = 6 + game.dmg_bonus;
-    document.getElementById('stat-def').textContent = 5;
 }
 
 init();
