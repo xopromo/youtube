@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slay the Spire-like Roguelike</title>
+    <title>Колода Силы — Карточный рогалик</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -27,10 +27,12 @@
             text-align: center;
             color: #ff6b6b;
             font-size: 32px;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             text-shadow: 0 0 20px #ff6b6b88;
             letter-spacing: 4px;
         }
+
+        .info { text-align: center; color: #666; font-size: 12px; margin-bottom: 16px; }
 
         .battle-screen {
             display: flex;
@@ -38,9 +40,7 @@
             margin-bottom: 20px;
         }
 
-        .enemy-side, .player-side {
-            flex: 1;
-        }
+        .enemy-side, .player-side { flex: 1; }
 
         .panel {
             background: linear-gradient(135deg, #111 0%, #1a1a2e 100%);
@@ -69,16 +69,8 @@
             margin-bottom: 20px;
         }
 
-        .enemy-emoji {
-            font-size: 80px;
-            margin-bottom: 15px;
-        }
-
-        .enemy-name {
-            font-size: 18px;
-            color: #ff6b6b;
-            margin-bottom: 10px;
-        }
+        .enemy-emoji { font-size: 80px; margin-bottom: 15px; }
+        .enemy-name { font-size: 18px; color: #ff6b6b; margin-bottom: 10px; }
 
         .health-bar {
             display: flex;
@@ -108,13 +100,8 @@
             color: #000;
         }
 
-        .bar-fill.low {
-            background: linear-gradient(90deg, #fbbf24, #f59e0b);
-        }
-
-        .bar-fill.critical {
-            background: linear-gradient(90deg, #ff6b6b, #ef4444);
-        }
+        .bar-fill.low { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+        .bar-fill.critical { background: linear-gradient(90deg, #ff6b6b, #ef4444); }
 
         .intent {
             background: #1a1a2e;
@@ -124,11 +111,8 @@
             text-align: center;
             font-size: 14px;
             margin-top: 10px;
-        }
-
-        .intent .icon {
-            font-size: 24px;
-            margin-right: 8px;
+            color: #fbbf24;
+            font-weight: bold;
         }
 
         .stats-grid {
@@ -163,14 +147,14 @@
             display: flex;
             gap: 12px;
             margin-top: 20px;
-            min-height: 180px;
+            min-height: 160px;
             flex-wrap: wrap;
             justify-content: center;
             align-items: flex-start;
         }
 
         .card {
-            width: 120px;
+            width: 110px;
             background: linear-gradient(135deg, #1a1a2e, #0f0f1e);
             border: 2px solid #4ade80;
             border-radius: 6px;
@@ -214,26 +198,13 @@
             font-size: 12px;
         }
 
-        .card-icon {
-            font-size: 32px;
-            margin: 8px 0;
-        }
-
-        .card-name {
-            font-size: 12px;
-            color: #e0e0e0;
-            margin-bottom: 6px;
-            font-weight: bold;
-        }
-
-        .card-desc {
-            font-size: 11px;
-            color: #888;
-        }
+        .card-icon { font-size: 32px; margin: 8px 0; }
+        .card-name { font-size: 11px; color: #e0e0e0; margin-bottom: 6px; font-weight: bold; }
+        .card-desc { font-size: 10px; color: #888; }
 
         .energy-display {
             text-align: center;
-            font-size: 20px;
+            font-size: 18px;
             margin-bottom: 15px;
             padding: 10px;
             background: #0a0a0a;
@@ -287,6 +258,15 @@
             cursor: not-allowed;
         }
 
+        .log-msg {
+            padding: 4px 0;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #888;
+        }
+
+        .log-msg.important { color: #ff6b6b; font-weight: bold; }
+
         .modal {
             display: none;
             position: fixed;
@@ -297,9 +277,7 @@
             z-index: 99;
         }
 
-        .modal.on {
-            display: flex;
-        }
+        .modal.on { display: flex; }
 
         .modal-content {
             background: linear-gradient(135deg, #111 0%, #1a1a2e 100%);
@@ -314,12 +292,6 @@
             font-size: 32px;
             color: #4ade80;
             margin-bottom: 20px;
-        }
-
-        .modal-content p {
-            font-size: 16px;
-            color: #888;
-            margin-bottom: 12px;
         }
 
         .rewards {
@@ -346,45 +318,11 @@
             box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
         }
 
-        .reward-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
+        .reward-icon { font-size: 48px; margin-bottom: 10px; }
+        .reward-name { font-size: 13px; color: #e0e0e0; margin-bottom: 6px; font-weight: bold; }
+        .reward-desc { font-size: 11px; color: #888; }
 
-        .reward-name {
-            font-size: 13px;
-            color: #e0e0e0;
-            margin-bottom: 6px;
-            font-weight: bold;
-        }
-
-        .reward-desc {
-            font-size: 11px;
-            color: #888;
-        }
-
-        .log-msg {
-            padding: 4px 0;
-            font-size: 13px;
-            line-height: 1.6;
-            color: #888;
-        }
-
-        .log-msg.important {
-            color: #ff6b6b;
-            font-weight: bold;
-        }
-
-        .game-over-modal {
-            text-align: center;
-        }
-
-        .game-over-modal h2 {
-            font-size: 48px !important;
-            margin-bottom: 30px !important;
-        }
-
-        .stats-summary {
+        .stat-summary {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 16px;
@@ -424,15 +362,14 @@
             margin-top: 20px;
         }
 
-        button.btn-start:hover {
-            transform: scale(1.05);
-        }
+        button.btn-start:hover { transform: scale(1.05); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🃏 CARD SPIRE 🃏</h1>
+    <h1>🃏 КОЛОДА СИЛЫ 🃏</h1>
+    <div class="info">Карточный рогалик | Этаж: <span id="floor-display">1</span>/3</div>
 
     <!-- BATTLE SCREEN -->
     <div id="battle-screen">
@@ -454,7 +391,7 @@
                 </div>
 
                 <div class="panel">
-                    <h3>Battle Log</h3>
+                    <h3>📜 Журнал боя</h3>
                     <div id="log" style="height: 150px; overflow-y: auto; font-size: 12px;">
                     </div>
                 </div>
@@ -463,7 +400,7 @@
             <!-- Player -->
             <div class="player-side">
                 <div class="panel">
-                    <h3>Your Stats</h3>
+                    <h3>⚔ Твоя статистика</h3>
                     <div class="stats-grid">
                         <div class="stat-box">
                             <div class="stat-label">HP</div>
@@ -472,7 +409,7 @@
                             </div>
                         </div>
                         <div class="stat-box">
-                            <div class="stat-label">Block</div>
+                            <div class="stat-label">Защита</div>
                             <div style="color: #4fc3f7; font-size: 18px; font-weight: bold;">
                                 <span id="player-block">0</span>
                             </div>
@@ -487,14 +424,14 @@
 
                 <div class="panel">
                     <div class="energy-display">
-                        Energy: <span id="energy">3</span> / 3
+                        ⚡ Энергия: <span id="energy">3</span> / 3
                         <div class="energy-bar" id="energy-bar"></div>
                     </div>
-                    <button class="action-button" id="end-turn-btn" onclick="endTurn()">End Turn</button>
+                    <button class="action-button" id="end-turn-btn" onclick="endTurn()">Закончить ход</button>
                 </div>
 
                 <div class="panel">
-                    <h3>Hand</h3>
+                    <h3>🎴 Рука</h3>
                     <div class="hand" id="hand"></div>
                 </div>
             </div>
@@ -504,75 +441,84 @@
     <!-- REWARD MODAL -->
     <div class="modal" id="reward-modal">
         <div class="modal-content">
-            <h2>Victory!</h2>
-            <p>Choose a card to add to your deck</p>
+            <h2>🎉 Победа!</h2>
+            <p>Выбери карту для добавления в колоду</p>
             <div class="rewards" id="reward-cards"></div>
-            <button class="btn-start" onclick="nextBattle()">Continue</button>
+            <button class="btn-start" onclick="nextBattle()">Далее</button>
         </div>
     </div>
 
     <!-- GAME OVER MODAL -->
     <div class="modal" id="gameover-modal">
-        <div class="modal-content game-over-modal">
+        <div class="modal-content">
             <h2 id="gameover-title"></h2>
-            <div class="stats-summary">
+            <div class="stat-summary">
                 <div class="stat-summary-box">
-                    <div class="stat-summary-label">Enemies Defeated</div>
+                    <div class="stat-summary-label">Врагов побеждено</div>
                     <div class="stat-summary-value" id="stat-kills">0</div>
                 </div>
                 <div class="stat-summary-box">
-                    <div class="stat-summary-label">Cards Collected</div>
+                    <div class="stat-summary-label">Карт собрано</div>
                     <div class="stat-summary-value" id="stat-cards">0</div>
                 </div>
                 <div class="stat-summary-box">
-                    <div class="stat-summary-label">Deck Size</div>
+                    <div class="stat-summary-label">Размер колоды</div>
                     <div class="stat-summary-value" id="stat-decksize">0</div>
                 </div>
                 <div class="stat-summary-box">
-                    <div class="stat-summary-label">Floor Reached</div>
+                    <div class="stat-summary-label">Этаж достигнут</div>
                     <div class="stat-summary-value" id="stat-floor">0</div>
                 </div>
             </div>
-            <button class="btn-start" onclick="location.reload()">Play Again</button>
+            <button class="btn-start" onclick="location.reload()">Играть снова</button>
         </div>
     </div>
 </div>
 
 <script>
 // ════════════════════════════════════════════════════════════════════════════
-// CARD DEFINITIONS
+// КАРТЫ
 // ════════════════════════════════════════════════════════════════════════════
 
 const CARD_DEFS = {
-    strike: { name: 'Strike', icon: '⚔', cost: 1, type: 'attack', effect: { dmg: 6 } },
-    heavy_strike: { name: 'Heavy Strike', icon: '💥', cost: 2, type: 'attack', effect: { dmg: 13 } },
-    pummel: { name: 'Pummel', icon: '👊', cost: 1, type: 'attack', effect: { dmg: 4, hits: 2 } },
+    // Атака
+    strike: { name: 'Удар', icon: '⚔', cost: 1, type: 'attack', dmg: 6, desc: 'Наноси 6 урона' },
+    heavy_strike: { name: 'Мощный удар', icon: '💥', cost: 2, type: 'attack', dmg: 13, desc: 'Наноси 13 урона' },
+    pummel: { name: 'Комбо', icon: '👊', cost: 1, type: 'attack', dmg: 4, multi: 2, desc: 'Удари 2 раза по 4 урона' },
 
-    defend: { name: 'Defend', icon: '🛡', cost: 1, type: 'skill', effect: { block: 5 } },
-    iron_skin: { name: 'Iron Skin', icon: '🪨', cost: 1, type: 'skill', effect: { block: 7 } },
-    brace: { name: 'Brace', icon: '🔒', cost: 0, type: 'skill', effect: { block: 3 } },
+    // Защита
+    defend: { name: 'Защита', icon: '🛡', cost: 1, type: 'skill', block: 5, desc: '+5 защиты' },
+    iron_skin: { name: 'Железная кожа', icon: '🪨', cost: 1, type: 'skill', block: 7, desc: '+7 защиты' },
+    brace: { name: 'Стойка', icon: '🔒', cost: 0, type: 'skill', block: 3, desc: '+3 защиты (бесплатная)' },
 
-    fireball: { name: 'Fireball', icon: '🔥', cost: 2, type: 'power', effect: { dmg: 10, aoe: true } },
-    flame_strike: { name: 'Flame Strike', icon: '🔥', cost: 3, type: 'power', effect: { dmg: 15 } },
+    // Мощные
+    fireball: { name: 'Огненный шар', icon: '🔥', cost: 2, type: 'power', dmg: 10, desc: 'Урон по области' },
+    double_strike: { name: 'Двойной удар', icon: '⚡', cost: 1, type: 'attack', dmg: 3, multi: 2, desc: '2x3 урона' },
+    shockwave: { name: 'Волна', icon: '〰', cost: 3, type: 'power', dmg: 15, desc: 'Мощный удар (15 урона)' },
 
-    weakened: { name: 'Weakened', icon: '😵', cost: -1, type: 'curse', effect: { debuff: true } },
+    // Комбо
+    reinforce: { name: 'Усиление', icon: '💪', cost: 1, type: 'skill', block: 4, next_dmg_plus: 3, desc: '+4 защиты, след атака +3' },
 };
 
 const ENEMIES = {
-    goblin: { name: 'Goblin', emoji: '👹', hp: 12, dmg: 2, actions: ['attack', 'attack', 'defend'] },
-    skeleton: { name: 'Skeleton', emoji: '💀', hp: 16, dmg: 3, actions: ['attack', 'attack', 'defend'] },
-    orc: { name: 'Orc', emoji: '🗡', hp: 22, dmg: 4, actions: ['heavy_attack', 'defend', 'attack'] },
-    dragon: { name: 'Dragon', emoji: '🐉', hp: 50, dmg: 6, actions: ['attack', 'heavy_attack', 'attack'], isBoss: true },
+    goblin: { name: 'Гоблин', emoji: '👹', hp: 12, dmg: 2, actions: ['attack', 'attack', 'defend'], floor: 1 },
+    bat: { name: 'Летучая мышь', emoji: '🦇', hp: 8, dmg: 1, actions: ['attack', 'attack', 'attack'], floor: 1 },
+    skeleton: { name: 'Скелет', emoji: '💀', hp: 16, dmg: 3, actions: ['attack', 'attack', 'defend'], floor: 1 },
+    orc: { name: 'Орк', emoji: '🗡', hp: 22, dmg: 4, actions: ['heavy_attack', 'defend', 'attack'], floor: 2 },
+    zombie: { name: 'Зомби', emoji: '🧟', hp: 20, dmg: 3, actions: ['attack', 'attack', 'defend'], floor: 2 },
+    troll: { name: 'Тролль', emoji: '👹', hp: 28, dmg: 5, actions: ['heavy_attack', 'heavy_attack', 'defend'], floor: 2 },
+    wyvern: { name: 'Виверна', emoji: '🐉', hp: 32, dmg: 6, actions: ['attack', 'heavy_attack', 'defend'], floor: 2 },
+    demon: { name: 'Демон', emoji: '😈', hp: 45, dmg: 7, actions: ['heavy_attack', 'attack', 'defend'], floor: 3, isBoss: true },
+    dragon: { name: 'Дракон', emoji: '🐲', hp: 60, dmg: 8, actions: ['heavy_attack', 'heavy_attack', 'defend'], floor: 3, isBoss: true },
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// GAME STATE
+// СОСТОЯНИЕ ИГРЫ
 // ════════════════════════════════════════════════════════════════════════════
 
 let game = {
-    // Player state
-    hp: 40,
-    maxHp: 40,
+    hp: 50,
+    maxHp: 50,
     block: 0,
     deck: [],
     hand: [],
@@ -580,21 +526,18 @@ let game = {
     energy: 3,
     maxEnergy: 3,
 
-    // Battle state
     battleNum: 0,
     currentEnemy: null,
-    enemyIndex: 0,
     turn: 0,
     log: [],
 
-    // Progression
     killCount: 0,
     cardsCollected: 0,
     floor: 1,
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// INITIALIZATION
+// ИНИЦИАЛИЗАЦИЯ
 // ════════════════════════════════════════════════════════════════════════════
 
 function init() {
@@ -603,10 +546,10 @@ function init() {
         { ...CARD_DEFS.strike },
         { ...CARD_DEFS.defend },
         { ...CARD_DEFS.defend },
-        { ...CARD_DEFS.defend },
+        { ...CARD_DEFS.brace },
     ];
-    game.hp = 40;
-    game.maxHp = 40;
+    game.hp = 50;
+    game.maxHp = 50;
     startNewBattle();
 }
 
@@ -616,19 +559,29 @@ function startNewBattle() {
     game.log = [];
     game.battleNum++;
 
-    // Spawn enemy
-    const enemies = Object.values(ENEMIES);
+    // Выбор врага
+    const floorEnemies = Object.values(ENEMIES).filter(e => e.floor <= game.floor);
+    let enemy;
+    if (game.battleNum === 1) {
+        enemy = ENEMIES.goblin;
+    } else if (game.battleNum % 3 === 0 && game.floor >= 2) {
+        // Боссы через 3 боя
+        const bosses = floorEnemies.filter(e => e.isBoss);
+        enemy = bosses[Math.floor(Math.random() * bosses.length)] || floorEnemies[floorEnemies.length - 1];
+    } else {
+        enemy = floorEnemies[Math.floor(Math.random() * floorEnemies.length)];
+    }
+
     game.currentEnemy = {
-        ...enemies[Math.min(game.battleNum - 1, enemies.length - 1)],
-        hp: enemies[Math.min(game.battleNum - 1, enemies.length - 1)].hp,
+        ...enemy,
+        hp: enemy.hp,
         block: 0,
         actionIndex: 0,
     };
 
-    // Draw hand
     game.discardPile = [];
     drawCards(5);
-    addLog('Battle started!');
+    addLog(`Встреча с ${game.currentEnemy.emoji} ${game.currentEnemy.name}!`);
     updateDisplay();
 }
 
@@ -645,7 +598,7 @@ function drawCards(num) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// CARD PLAYING
+// ИГРОВАЯ ЛОГИКА
 // ════════════════════════════════════════════════════════════════════════════
 
 function playCard(index) {
@@ -657,47 +610,47 @@ function playCard(index) {
     game.hand.splice(index, 1);
     game.discardPile.push(card);
 
-    // Apply effect
     if (card.type === 'attack' || card.type === 'power') {
-        const dmg = card.effect.dmg;
-        game.currentEnemy.hp -= dmg;
-        addLog(`You play ${card.icon} ${card.name}: ${dmg} damage`);
+        const dmg = card.dmg;
+        if (card.multi) {
+            for (let i = 0; i < card.multi; i++) {
+                game.currentEnemy.hp -= dmg;
+            }
+            addLog(`${card.icon} ${card.name}: ${dmg} x${card.multi} = ${dmg * card.multi} урона`);
+        } else {
+            game.currentEnemy.hp -= dmg;
+            addLog(`${card.icon} ${card.name}: ${dmg} урона`);
+        }
     } else if (card.type === 'skill') {
-        game.block += card.effect.block;
-        addLog(`You play ${card.icon} ${card.name}: +${card.effect.block} Block`);
+        game.block += card.block;
+        addLog(`${card.icon} ${card.name}: +${card.block} защиты`);
     }
 
     updateDisplay();
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// TURN MANAGEMENT
-// ════════════════════════════════════════════════════════════════════════════
-
 function endTurn() {
     game.turn++;
-    addLog(`--- End Turn ${game.turn} ---`);
+    addLog(`--- Ход ${game.turn} врага ---`);
 
-    // Enemy action
     const action = game.currentEnemy.actions[game.currentEnemy.actionIndex % game.currentEnemy.actions.length];
     game.currentEnemy.actionIndex++;
 
     if (action === 'attack') {
         const dmg = Math.max(1, game.currentEnemy.dmg - Math.floor(game.block / 2));
         game.hp -= dmg;
-        addLog(`${game.currentEnemy.emoji} attacks: ${dmg} damage (block: ${game.block})`);
+        addLog(`${game.currentEnemy.emoji} атакует: ${dmg} урона (защита: ${game.block})`, true);
         game.block = 0;
     } else if (action === 'heavy_attack') {
-        const dmg = Math.max(1, game.currentEnemy.dmg * 2 - Math.floor(game.block / 2));
+        const dmg = Math.max(1, Math.floor(game.currentEnemy.dmg * 2) - Math.floor(game.block / 2));
         game.hp -= dmg;
-        addLog(`${game.currentEnemy.emoji} heavy attack: ${dmg} damage!`);
+        addLog(`${game.currentEnemy.emoji} МОЩНАЯ АТАКА: ${dmg} урона!`, true);
         game.block = 0;
     } else if (action === 'defend') {
         game.currentEnemy.block += 8;
-        addLog(`${game.currentEnemy.emoji} braces: +8 block`);
+        addLog(`${game.currentEnemy.emoji} готовится к защите: +8 защиты`);
     }
 
-    // Check win/lose
     if (game.currentEnemy.hp <= 0) {
         win();
         return;
@@ -708,40 +661,43 @@ function endTurn() {
         return;
     }
 
-    // Draw cards
     game.energy = game.maxEnergy;
     drawCards(5);
-    addLog('New hand drawn');
+    addLog('Новая рука');
     updateDisplay();
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// BATTLE OUTCOME
-// ════════════════════════════════════════════════════════════════════════════
 
 function win() {
     game.killCount++;
     game.cardsCollected++;
-    addLog(`${game.currentEnemy.emoji} defeated!`);
+    addLog(`${game.currentEnemy.emoji} ${game.currentEnemy.name} побежден!`, true);
 
-    // Show reward
     document.getElementById('reward-modal').classList.add('on');
     const rewards = document.getElementById('reward-cards');
     rewards.innerHTML = '';
 
-    // Generate 3 random cards
-    const cardKeys = Object.keys(CARD_DEFS).filter(k => !k.includes('weakened'));
+    // Гарантировать хороший выбор карт
+    const cardKeys = Object.keys(CARD_DEFS);
+    const selected = [];
+
     for (let i = 0; i < 3; i++) {
-        const key = cardKeys[Math.floor(Math.random() * cardKeys.length)];
+        let key;
+        do {
+            key = cardKeys[Math.floor(Math.random() * cardKeys.length)];
+        } while (selected.includes(key));
+        selected.push(key);
+    }
+
+    selected.forEach(key => {
         const card = CARD_DEFS[key];
         rewards.innerHTML += `
             <div class="reward-card" onclick="addCardToDeck('${key}')">
                 <div class="reward-icon">${card.icon}</div>
                 <div class="reward-name">${card.name}</div>
-                <div class="reward-desc">Cost: ${card.cost}</div>
+                <div class="reward-desc">Стоимость: ${card.cost}</div>
             </div>
         `;
-    }
+    });
 }
 
 function addCardToDeck(cardKey) {
@@ -751,16 +707,17 @@ function addCardToDeck(cardKey) {
 }
 
 function nextBattle() {
-    if (game.battleNum >= 6) {
+    game.floor = Math.floor((game.battleNum / 3) + 1);
+
+    if (game.battleNum >= 9) {
         endGame(true);
     } else {
-        game.floor = Math.floor(game.battleNum / 3) + 1;
         startNewBattle();
     }
 }
 
 function lose() {
-    addLog('You were defeated!');
+    addLog('Ты был побежден!', true);
     setTimeout(() => {
         document.getElementById('battle-screen').style.display = 'none';
         endGame(false);
@@ -770,7 +727,7 @@ function lose() {
 function endGame(won) {
     const modal = document.getElementById('gameover-modal');
     const title = document.getElementById('gameover-title');
-    title.textContent = won ? '🎉 VICTORY!' : '💀 DEFEAT';
+    title.textContent = won ? '🎉 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
     title.style.color = won ? '#4ade80' : '#ff6b6b';
 
     document.getElementById('stat-kills').textContent = game.killCount;
@@ -781,75 +738,76 @@ function endGame(won) {
     modal.classList.add('on');
 }
 
+function addLog(msg, important = false) {
+    const log = document.getElementById('log');
+    const div = document.createElement('div');
+    div.className = 'log-msg' + (important ? ' important' : '');
+    div.textContent = msg;
+    log.insertBefore(div, log.firstChild);
+    if (log.children.length > 20) log.removeChild(log.lastChild);
+}
+
 // ════════════════════════════════════════════════════════════════════════════
-// DISPLAY UPDATE
+// ОТОБРАЖЕНИЕ
 // ════════════════════════════════════════════════════════════════════════════
 
 function updateDisplay() {
-    // Enemy
+    document.getElementById('floor-display').textContent = game.floor;
+
+    // Враг
     const enemy = game.currentEnemy;
-    const enemyHpPct = Math.max(0, enemy.hp / 50);
+    const enemyMaxHp = Object.values(ENEMIES).find(e => e.emoji === enemy.emoji)?.hp || 50;
+    const enemyHpPct = Math.max(0, enemy.hp / enemyMaxHp);
     document.getElementById('enemy-emoji').textContent = enemy.emoji;
-    document.getElementById('enemy-name').textContent = enemy.name;
+    document.getElementById('enemy-name').textContent = enemy.name + (enemy.isBoss ? ' 👑 БОСС' : '');
     document.getElementById('enemy-hp').textContent = Math.max(0, enemy.hp);
-    document.getElementById('enemy-maxhp').textContent = enemy.hp > 0 ? 50 : 0;
+    document.getElementById('enemy-maxhp').textContent = enemyMaxHp;
     const enemyBar = document.getElementById('enemy-health-bar');
     enemyBar.style.width = (enemyHpPct * 100) + '%';
     enemyBar.className = 'bar-fill ' + (enemyHpPct > 0.5 ? '' : enemyHpPct > 0.25 ? 'low' : 'critical');
     enemyBar.textContent = Math.max(0, Math.ceil(enemy.hp));
 
-    // Enemy intent
+    const actionName = { attack: '⚔ Атака', heavy_attack: '💥 МОЩНАЯ АТАКА', defend: '🛡 Защита' };
     const nextAction = enemy.actions[enemy.actionIndex % enemy.actions.length];
-    let intentText = '';
-    if (nextAction === 'attack') intentText = '⚔️ Attack (2)';
-    else if (nextAction === 'heavy_attack') intentText = '💥 Heavy Attack (4)';
-    else if (nextAction === 'defend') intentText = '🛡️ Defend (+8)';
-    document.getElementById('enemy-intent').innerHTML = `<div class="icon">${intentText.split(' ')[0]}</div>${intentText.split(' ').slice(1).join(' ')}`;
+    document.getElementById('enemy-intent').textContent = actionName[nextAction] || nextAction;
 
-    // Player
-    const hpPct = game.hp / game.maxHp;
-    document.getElementById('player-hp').textContent = game.hp;
+    // Игрок
+    const playerHpPct = game.hp / game.maxHp;
+    document.getElementById('player-hp').textContent = Math.max(0, game.hp);
     document.getElementById('player-maxhp').textContent = game.maxHp;
     document.getElementById('player-block').textContent = game.block;
     const playerBar = document.getElementById('player-health-bar');
-    playerBar.style.width = (hpPct * 100) + '%';
-    playerBar.className = 'bar-fill ' + (hpPct > 0.5 ? '' : hpPct > 0.25 ? 'low' : 'critical');
+    playerBar.style.width = (playerHpPct * 100) + '%';
+    playerBar.className = 'bar-fill ' + (playerHpPct > 0.5 ? '' : playerHpPct > 0.25 ? 'low' : 'critical');
+    playerBar.textContent = Math.max(0, Math.ceil(game.hp));
 
-    // Energy
+    // Энергия
     document.getElementById('energy').textContent = game.energy;
-    let energyHtml = '';
+    const energyBar = document.getElementById('energy-bar');
+    energyBar.innerHTML = '';
     for (let i = 0; i < game.maxEnergy; i++) {
-        energyHtml += `<div class="energy-orb ${i >= game.energy ? 'empty' : ''}"></div>`;
+        const orb = document.createElement('div');
+        orb.className = 'energy-orb' + (i >= game.energy ? ' empty' : '');
+        energyBar.appendChild(orb);
     }
-    document.getElementById('energy-bar').innerHTML = energyHtml;
 
-    // Hand
-    const handEl = document.getElementById('hand');
-    handEl.innerHTML = '';
+    // Карты в руке
+    const hand = document.getElementById('hand');
+    hand.innerHTML = '';
     game.hand.forEach((card, i) => {
-        const canPlay = game.energy >= card.cost;
-        handEl.innerHTML += `
-            <div class="card ${!canPlay ? 'disabled' : ''}" ${canPlay ? `onclick="playCard(${i})"` : ''}>
-                <div class="card-cost">${card.cost}</div>
-                <div class="card-icon">${card.icon}</div>
-                <div class="card-name">${card.name}</div>
-                <div class="card-desc">${card.effect.dmg ? `${card.effect.dmg} damage` : `+${card.effect.block} block`}</div>
-            </div>
+        const cardEl = document.createElement('div');
+        cardEl.className = 'card' + (game.energy < card.cost ? ' disabled' : '');
+        cardEl.onclick = () => playCard(i);
+        cardEl.innerHTML = `
+            <div class="card-cost">${card.cost}</div>
+            <div class="card-icon">${card.icon}</div>
+            <div class="card-name">${card.name}</div>
+            <div class="card-desc">${card.desc}</div>
         `;
+        hand.appendChild(cardEl);
     });
-
-    // Log
-    const logEl = document.getElementById('log');
-    logEl.innerHTML = game.log.slice(-10).reverse().map(m =>
-        `<div class="log-msg ${m.important ? 'important' : ''}">${m.text}</div>`
-    ).join('');
 }
 
-function addLog(text, important = false) {
-    game.log.push({ text, important });
-}
-
-// Start game
 init();
 </script>
 
