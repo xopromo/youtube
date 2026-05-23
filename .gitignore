@@ -1,0 +1,4 @@
+
+# Telegram chat HTML exports (temporary processing files)
+messages*.html
+parse_full_contacts.py
